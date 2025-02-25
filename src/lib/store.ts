@@ -8,6 +8,7 @@ export type Product = {
   precio_venta: number;
   cantidad: number;
   fecha_vencimiento: string;
+  categoria: string;
 };
 
 export type OrderItem = {

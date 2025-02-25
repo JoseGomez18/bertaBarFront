@@ -14,7 +14,7 @@ const initialData: ProductFormData = {
   precio_venta: 0,
   cantidad: 1,
   fecha_vencimiento: "s",
-  // category: "bebidas",
+  categoria: "bebidas",
 }
 
 export function ProductForm({
@@ -61,6 +61,13 @@ export function ProductForm({
 
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Categoría</label>
+            <input
+              type="text"
+              value={formData.categoria}
+              onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
+              className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
+              required
+            />
             {/* <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}

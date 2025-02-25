@@ -29,6 +29,7 @@ export function ProductList({ searchQuery }: { searchQuery: string }) {
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Precio compra</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Precio venta</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">cantidad</th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">categoria</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">vencimiento</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Acciones</th>
               </tr>
@@ -51,6 +52,7 @@ export function ProductList({ searchQuery }: { searchQuery: string }) {
                       {product.cantidad} unidades
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-right text-sm">{product.categoria}</td>
                   <td className="px-4 py-3 text-right text-sm">{product.fecha_vencimiento}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
