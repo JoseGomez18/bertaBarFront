@@ -8,6 +8,7 @@ import { ProductList } from "../../components/inventory/product-list"
 export default function InventoryPage() {
   const [isAddingProduct, setIsAddingProduct] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   return (
     <div className="space-y-6 animate-in">
@@ -39,7 +40,12 @@ export default function InventoryPage() {
 
       <ProductList searchQuery={searchQuery} />
 
-      {isAddingProduct && <ProductForm onClose={() => setIsAddingProduct(false)} />}
+      {isAddingProduct && (
+  <ProductForm 
+    onClose={() => setIsAddingProduct(false)} 
+    setSuccessMessage={setSuccessMessage} // ✅ Agrega esto
+  />
+)}
     </div>
   )
 }
