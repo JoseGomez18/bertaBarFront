@@ -1,35 +1,14 @@
 import { create } from "zustand";
-import axios from "axios";
-
-export type Product = {
-  id: number;
-  nombre: string;
-  precio_compra: number;
-  precio_venta: number;
-  cantidad: number;
-  fecha_vencimiento: string;
-  categoria: string;
-};
-
-export type OrderItem = {
-  productId: number;
-  quantity: number;
-  price: number;
-  name: string;
-};
-
-export type Order = {
-  id: number;
-  customerName: string;
-  items: OrderItem[];
-  total: number;
-  status: "pending" | "in_progress" | "completed";
-  createdAt: Date;
-};
+import { Product, Order } from "../types/inventario";
+import { fetchProducts, createProduct, updateProduct, deleteProduct } from "../api/api"; // Importamos la API
 
 type Store = {
   products: Product[];
   orders: Order[];
+  successMessage: string | null; // ✅ Estado para el mensaje de éxito
+  setSuccessMessage: (message: string | null) => void; // ✅ Función para actualizar el mensaje
+
+
   addProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateProduct: (id: number, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
@@ -41,12 +20,14 @@ type Store = {
 export const useStore = create<Store>((set) => ({
   products: [],
   orders: [],
+  successMessage: null, // ✅ Inicializamos en `null`
+
+  setSuccessMessage: (message) => set({ successMessage: message }), // ✅ Función para actualizar el mensaje
 
   fetchProducts: async () => {
     try {
-      const response = await axios.get("http://localhost:3004/api/productos"); // Cambia la URL a tu API real
-      console.log(response)
-      set({ products: response.data });
+      const data = await fetchProducts();
+      set({ products: data });
     } catch (error) {
       console.error("Error al obtener productos:", error);
     }
@@ -54,8 +35,11 @@ export const useStore = create<Store>((set) => ({
 
   addProduct: async (product) => {
     try {
-      const response = await axios.post("https://jsonplaceholder.typicode.com/posts", product);
-      set((state) => ({ products: [...state.products, response.data] }));
+      const newProduct = await createProduct(product);
+      set((state) => ({
+         products: [...state.products, newProduct] ,
+         successMessage: "Producto agregado con éxito", // ✅ Asignar mensaje de éxito
+        }));
     } catch (error) {
       console.error("Error al agregar producto:", error);
     }
@@ -63,11 +47,12 @@ export const useStore = create<Store>((set) => ({
 
   updateProduct: async (id, updatedProduct) => {
     try {
-      await axios.put(`https://jsonplaceholder.typicode.com/posts/${id}`, updatedProduct);
+      await updateProduct(id, updatedProduct);
       set((state) => ({
         products: state.products.map((product) =>
           product.id === id ? { ...product, ...updatedProduct } : product
         ),
+        successMessage: "Producto actualizado con éxito", // ✅ Mensaje de éxito
       }));
     } catch (error) {
       console.error("Error al actualizar producto:", error);
@@ -76,8 +61,11 @@ export const useStore = create<Store>((set) => ({
 
   deleteProduct: async (id) => {
     try {
-      await axios.delete(`https://jsonplaceholder.typicode.com/posts/${id}`);
-      set((state) => ({ products: state.products.filter((product) => product.id !== id) }));
+      await deleteProduct(id);
+      set((state) => ({
+        products: state.products.filter((product) => product.id !== id),
+        successMessage: "Producto eliminado con éxito", // ✅ Mensaje de éxito
+      }));
     } catch (error) {
       console.error("Error al eliminar producto:", error);
     }
@@ -97,6 +85,8 @@ export const useStore = create<Store>((set) => ({
 
   updateOrderStatus: (id, status) =>
     set((state) => ({
-      orders: state.orders.map((order) => (order.id === id ? { ...order, status } : order)),
+      orders: state.orders.map((order) =>
+        order.id === id ? { ...order, status } : order
+      ),
     })),
 }));

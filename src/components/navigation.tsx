@@ -19,7 +19,7 @@ export function Navigation() {
       <div className="flex flex-col gap-2 p-4">
         <NavSection title="General" />
         <NavItem href="/" icon={Home} label="Dashboard" active={pathname === "/"} />
-        <NavItem href="/orders" icon={ClipboardList} label="Pedidos" active={pathname === "/orders"} />
+        <NavItem href="/pedidos" icon={ClipboardList} label="Pedidos" active={pathname === "/pedidos"} />
 
         <NavSection title="Gestión" />
         <NavItem href="/inventory" icon={Package} label="Inventario" active={pathname === "/inventory"} />
