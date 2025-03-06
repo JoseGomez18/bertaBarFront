@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import axios from "axios"; // Asegúrate de tener axios instalado
-import type { Product } from "../../types/inventario";
-import { useStore } from "../../lib/store";
+import type React from "react"
+import { useState, useEffect } from "react"
+import { X } from "lucide-react"
+import axios from "axios" // Asegúrate de tener axios instalado
+import type { Product } from "../../types/inventario"
+import { useStore } from "../../lib/store"
 
-type ProductFormData = Omit<Product, "id">;
+type ProductFormData = Omit<Product, "id">
 
 const initialData: ProductFormData = {
   nombre: "",
@@ -16,101 +16,148 @@ const initialData: ProductFormData = {
   cantidad: 1,
   fecha_vencimiento: "",
   categoria: 0, // Ahora será un ID en lugar de un texto
-};
+}
 
 export function ProductForm({
   onClose,
   editProduct,
-  setSuccessMessage, 
+  setSuccessMessage,
 }: {
-  onClose: () => void;
-  editProduct?: Product;
-  setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  onClose: () => void
+  editProduct?: Product
+  setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>
 }) {
-  console.log("🟢 Props recibidos en ProductForm:", { onClose, editProduct, setSuccessMessage });
-  const [formData, setFormData] = useState<ProductFormData>(editProduct || initialData);
-  const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([]);
-  const { addProduct, updateProduct, fetchProducts  } = useStore();
-
+  console.log("🟢 Props recibidos en ProductForm:", { onClose, editProduct, setSuccessMessage })
+  const [formData, setFormData] = useState<ProductFormData>(initialData)
+  const [showEditConfirm, setShowEditConfirm] = useState(false)
+  const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([])
+  const { addProduct, updateProduct, fetchProducts } = useStore()
 
   // Obtener las categorías desde el backend
   useEffect(() => {
-    axios.get("http://localhost:3004/api/categorias") // Asegúrate de usar la URL correcta de tu API
+    axios
+      .get("http://localhost:3004/api/categorias") // Asegúrate de usar la URL correcta de tu API
       .then((response) => {
-        setCategorias(response.data);
+        setCategorias(response.data)
+        console.log("Categorías cargadas:", response.data)
       })
       .catch((error) => {
-        console.error("Error al obtener categorías:", error);
-      });
-  }, []);
+        console.error("Error al obtener categorías:", error)
+      })
+  }, [])
+
+  // Cargar datos del producto a editar después de que las categorías se hayan cargado
+  useEffect(() => {
+    console.log("📌 editProduct recibido:", editProduct)
+    if (editProduct && categorias.length > 0) {
+      console.log("Cargando datos del producto para editar. Categoría del producto:", editProduct.categoria)
+
+      // Intentar encontrar la categoría por nombre si es un string
+      let categoriaId = 0
+
+      if (typeof editProduct.categoria === "string") {
+        // Si es un string, buscar la categoría por nombre
+        const categoriaEncontrada = categorias.find(
+          (cat) => cat.nombre.toLowerCase() === editProduct.categoria.toString().toLowerCase(),
+        )
+
+        if (categoriaEncontrada) {
+          categoriaId = Number.parseInt(categoriaEncontrada.id)
+          console.log("Categoría encontrada por nombre:", categoriaEncontrada.nombre, "ID:", categoriaId)
+        }
+      } else if (typeof editProduct.categoria === "number") {
+        // Si ya es un número, usarlo directamente
+        categoriaId = editProduct.categoria
+        console.log("Usando ID de categoría directamente:", categoriaId)
+      }
+
+      setFormData({
+        nombre: editProduct.nombre,
+        precio_compra: editProduct.precio_compra,
+        precio_venta: editProduct.precio_venta,
+        cantidad: editProduct.cantidad,
+        fecha_vencimiento: editProduct.fecha_vencimiento,
+        categoria: categoriaId,
+      })
+    } else if (!editProduct) {
+      setFormData(initialData)
+    }
+  }, [editProduct, categorias])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-  
-    console.log("🚀 Enviando producto...");
-    
+    e.preventDefault()
+
+    console.log("🚀 Enviando producto...")
+
     const productoAEnviar = {
       ...formData,
       categoria_id: formData.categoria, // Renombramos `categoria` a `categoria_id`
-    };
-  
-    console.log("📦 Datos a enviar:", productoAEnviar);
-  
+    }
+
+    console.log("📦 Datos a enviar:", productoAEnviar)
+
     try {
-      let response;
-  
+      let response
+
       if (editProduct) {
+        if (!showEditConfirm) {
+          setShowEditConfirm(true)
+          return
+        }
+
         // Si estamos editando, usamos PUT en lugar de POST
-        response = await axios.put(`http://localhost:3004/api/updateProduct/${editProduct.id}`, productoAEnviar);
-        console.log("✏️ Producto editado con éxito:", response.data);
-        
+        response = await axios.put(`http://localhost:3004/api/updateProduct`, {
+          ...productoAEnviar,
+          id: editProduct.id, // Aseguramos que el ID esté en el body
+        })
+        console.log("✏️ Producto editado con éxito:", response.data)
+
         updateProduct(editProduct.id, {
           ...formData,
           id: editProduct.id, // Mantenemos el ID del producto editado
-        });
-        
-        setSuccessMessage("✅ Producto actualizado exitosamente!");
+        })
+
+        setSuccessMessage("✅ Producto actualizado exitosamente!")
+        setShowEditConfirm(false)
       } else {
         // Si estamos creando, usamos POST
-        response = await axios.post("http://localhost:3004/api/productos", productoAEnviar);
-        console.log("✅ Producto creado con éxito:", response.data);
-  
+        response = await axios.post("http://localhost:3004/api/productos", productoAEnviar)
+        console.log("✅ Producto creado con éxito:", response.data)
+
         if (!response.data.id) {
-          throw new Error("La respuesta del servidor no incluye un ID válido.");
+          throw new Error("La respuesta del servidor no incluye un ID válido.")
         }
-  
+
         addProduct({
           ...formData,
           id: response.data.id as number,
-        } as Product);
-        setSuccessMessage("✅ Producto agregado exitosamente!");
+        } as Product)
+        setSuccessMessage("✅ Producto agregado exitosamente!")
       }
-  
+
       // Actualizar la lista de productos
-      await fetchProducts();
-  
+      await fetchProducts()
+
       // Cerrar el modal
       if (typeof onClose === "function") {
-        onClose();
+        onClose()
       }
-  
+
       // Limpiar el formulario solo si se creó un nuevo producto
       if (!editProduct) {
-        setFormData(initialData);
+        setFormData(initialData)
       }
-  
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        console.error("❌ Error al procesar la solicitud:", error.response?.data);
-        alert(error.response?.data?.error || "Hubo un error en la operación");
+        console.error("❌ Error al procesar la solicitud:", error.response?.data)
+        alert(error.response?.data?.error || "Hubo un error en la operación")
       } else {
-        console.error("🚨 Error inesperado:", error);
-        alert("Ocurrió un error inesperado");
+        console.error("🚨 Error inesperado:", error)
+        alert("Ocurrió un error inesperado")
       }
     }
-  };  
-  
-  
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-lg border border-border/10 bg-card p-6 shadow-lg">
@@ -218,7 +265,33 @@ export function ProductForm({
             </button>
           </div>
         </form>
+
+        {showEditConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-lg border border-border/10 bg-card p-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-amber-500 mb-2">Confirmar edición</h3>
+              <p className="text-muted-foreground mb-4">
+                ¿Estás seguro que deseas guardar los cambios en este producto?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowEditConfirm(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
+  )
 }
+

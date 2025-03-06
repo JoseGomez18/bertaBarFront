@@ -1,59 +1,88 @@
 "use client"
 
+import type React from "react"
+
 import { Edit, Trash } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ProductForm } from "./product-form"
 import { useStore } from "../../lib/store"
+import axios from "axios"
 
-export function ProductList({ searchQuery }: { searchQuery: string }) {
+// Definir la interfaz para las categorías
+interface Categoria {
+  id: string
+  nombre: string
+}
+
+export function ProductList({
+  searchQuery,
+  setSuccessMessage,
+}: {
+  searchQuery: string
+  setSuccessMessage: React.Dispatch<React.SetStateAction<string | null>>
+}) {
   const [editingProduct, setEditingProduct] = useState<any>(null)
   const { products, deleteProduct, fetchProducts } = useStore()
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<number | null>(null)
+  const [categorias, setCategorias] = useState<Categoria[]>([])
 
-  // Cargar productos al montar el componente
+  // Cargar productos y categorías al montar el componente
   useEffect(() => {
     fetchProducts()
+    // Cargar categorías
+    axios
+      .get("http://localhost:3004/api/categorias")
+      .then((response) => {
+        setCategorias(response.data)
+      })
+      .catch((error) => {
+        console.error("Error al cargar categorías:", error)
+      })
   }, [fetchProducts])
 
   useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
-      return () => clearTimeout(timer);
+    if (setSuccessMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000)
+      return () => clearTimeout(timer)
     }
-  }, [successMessage]);
+  }, [setSuccessMessage])
 
+  // Función para obtener el nombre de la categoría por su ID
+  const getCategoryName = (categoryId: number | string) => {
+    const categoria = categorias.find((cat) => cat.id.toString() === categoryId.toString())
+    return categoria ? categoria.nombre : categoryId.toString()
+  }
 
   console.log("Productos en el estado:", products) // Depuración
 
   // Aseguramos que products es un array antes de filtrar
   const filteredProducts = Array.isArray(products)
-    ? products.filter((product) =>
-        product.nombre?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? products.filter((product) => product.nombre?.toLowerCase().includes(searchQuery.toLowerCase()))
     : []
 
-     // Manejo de eliminación de producto con confirmación
+  // Manejo de eliminación de producto con confirmación
   const handleDelete = async (id: number) => {
-    const confirmDelete = window.confirm("¿Estás seguro de que deseas eliminar este producto?");
-    if (!confirmDelete) return;
+    setProductToDelete(id)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return
 
     try {
-      await deleteProduct(id);
-      setSuccessMessage("Producto eliminado exitosamente.");
-      fetchProducts(); // Recargar lista de productos
+      await deleteProduct(productToDelete)
+      setSuccessMessage("✅ Producto eliminado exitosamente.")
+      fetchProducts() // Recargar lista de productos
+      setShowDeleteConfirm(false)
+      setProductToDelete(null)
     } catch (error) {
-      console.error("Error eliminando producto:", error);
+      console.error("Error eliminando producto:", error)
     }
-  };
-
+  }
 
   return (
     <>
-    {successMessage && (
-  <div className="fixed top-5 left-1/2 transform -translate-x-1/2 bg-green-500 text-white p-3 rounded-lg shadow-lg z-50">
-    {successMessage}
-  </div>
-)}
       <div className="rounded-lg border border-border/10 bg-card">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -81,14 +110,14 @@ export function ProductList({ searchQuery }: { searchQuery: string }) {
                           product.cantidad === 0
                             ? "bg-red-500/20 text-red-500"
                             : product.cantidad < 10
-                            ? "bg-yellow-500/20 text-yellow-500"
-                            : "bg-green-500/20 text-green-500"
+                              ? "bg-yellow-500/20 text-yellow-500"
+                              : "bg-green-500/20 text-green-500"
                         }`}
                       >
                         {product.cantidad} unidades
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm">{product.categoria}</td>
+                    <td className="px-4 py-3 text-right text-sm">{getCategoryName(product.categoria)}</td>
                     <td className="px-4 py-3 text-right text-sm">{product.fecha_vencimiento}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
@@ -119,13 +148,43 @@ export function ProductList({ searchQuery }: { searchQuery: string }) {
           </table>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg border border-border/10 bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold text-red-500 mb-2">Confirmar eliminación</h3>
+            <p className="text-muted-foreground mb-4">
+              ¿Estás seguro que deseas eliminar este producto? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setProductToDelete(null)
+                }}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-red-600"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {editingProduct && (
-        <ProductForm 
-          editProduct={editingProduct} 
-          onClose={() => setEditingProduct(null)} 
-          setSuccessMessage={setSuccessMessage} 
+        <ProductForm
+          editProduct={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          setSuccessMessage={setSuccessMessage}
         />
       )}
     </>
-  );
+  )
 }
+
