@@ -1,13 +1,13 @@
 import { create } from "zustand";
-import { Product, Order } from "../types/inventario";
-import { fetchProducts, createProduct, updateProduct, deleteProduct } from "../api/api"; // Importamos la API
+import { Product, Order, Category } from "../types/inventario";
+import { fetchProducts, fetchCategories, createProduct, updateProduct, deleteProduct } from "../api/api";
 
 type Store = {
   products: Product[];
+  categories: Category[]; // Mantenemos Category[]
   orders: Order[];
-  successMessage: string | null; // ✅ Estado para el mensaje de éxito
-  setSuccessMessage: (message: string | null) => void; // ✅ Función para actualizar el mensaje
-
+  successMessage: string | null;
+  setSuccessMessage: (message: string | null) => void;
 
   addProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateProduct: (id: number, product: Partial<Product>) => Promise<void>;
@@ -15,14 +15,16 @@ type Store = {
   addOrder: (order: Omit<Order, "id" | "createdAt">) => void;
   updateOrderStatus: (id: number, status: Order["status"]) => void;
   fetchProducts: () => Promise<void>;
+  fetchCategories: () => Promise<void>;
 };
 
 export const useStore = create<Store>((set) => ({
   products: [],
+  categories: [],
   orders: [],
-  successMessage: null, // ✅ Inicializamos en `null`
+  successMessage: null,
 
-  setSuccessMessage: (message) => set({ successMessage: message }), // ✅ Función para actualizar el mensaje
+  setSuccessMessage: (message) => set({ successMessage: message }),
 
   fetchProducts: async () => {
     try {
@@ -33,12 +35,21 @@ export const useStore = create<Store>((set) => ({
     }
   },
 
+  fetchCategories: async () => {
+    try {
+      const data = await fetchCategories();
+      set({ categories: data });
+    } catch (error) {
+      console.error("Error al obtener categorías:", error);
+    }
+  },
+
   addProduct: async (product) => {
     try {
       const newProduct = await createProduct(product);
       set((state) => ({
-         products: [...state.products, newProduct] ,
-         successMessage: "Producto agregado con éxito", // ✅ Asignar mensaje de éxito
+         products: [...state.products, newProduct],
+         successMessage: "Producto agregado con éxito",
         }));
     } catch (error) {
       console.error("Error al agregar producto:", error);
@@ -52,7 +63,7 @@ export const useStore = create<Store>((set) => ({
         products: state.products.map((product) =>
           product.id === id ? { ...product, ...updatedProduct } : product
         ),
-        successMessage: "Producto actualizado con éxito", // ✅ Mensaje de éxito
+        successMessage: "Producto actualizado con éxito",
       }));
     } catch (error) {
       console.error("Error al actualizar producto:", error);
@@ -64,7 +75,7 @@ export const useStore = create<Store>((set) => ({
       await deleteProduct(id);
       set((state) => ({
         products: state.products.filter((product) => product.id !== id),
-        successMessage: "Producto eliminado con éxito", // ✅ Mensaje de éxito
+        successMessage: "Producto eliminado con éxito",
       }));
     } catch (error) {
       console.error("Error al eliminar producto:", error);

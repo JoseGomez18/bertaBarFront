@@ -367,8 +367,8 @@ export function OrderList({
                   <td className="px-4 py-3 text-right text-sm">
                     <div className="flex items-center justify-end gap-1 text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>{order.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                    </div>
+                      <span>{order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+                      </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button

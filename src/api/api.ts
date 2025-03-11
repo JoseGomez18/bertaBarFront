@@ -1,4 +1,4 @@
-import { Product } from "../types/inventario"; // Asegúrate de que la ruta sea correcta
+import { Product, Category } from "../types/inventario"; // Asegúrate de que la ruta sea correcta
 
 export const API_URL = "http://localhost:3004/api"; // Ajusta el puerto si es necesario
 
@@ -7,7 +7,7 @@ export const fetchProducts = async (): Promise<Product[]> => {
   return response.json();
 };
 
-export const fetchCategories = async (): Promise<string[]> => {
+export const fetchCategories = async (): Promise<Category[]> => {
   const response = await fetch(`${API_URL}/categorias`);
   return response.json();
 };

@@ -104,8 +104,8 @@ export function ActiveOrders() {
                   <h3 className="font-medium">{order.customerName}</h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    <span>{order.createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
+                    <span>{order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+                    </div>
                 </div>
                 <div
                   className={`rounded-full px-2 py-1 text-xs font-medium ${

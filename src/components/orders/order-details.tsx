@@ -28,11 +28,11 @@ type OrderDetailsProps = {
 
 // Add this utility function at the top of the file
 function formatTime(date: Date) {
-  return date.toLocaleTimeString("es-ES", {
+  return date.toLocaleTimeString("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  })
+    hour12: true, 
+  })  
 }
 
 export function OrderDetails({ order, onClose }: OrderDetailsProps) {

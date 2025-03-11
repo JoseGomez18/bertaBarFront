@@ -1,92 +1,28 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
-import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag, Check, Receipt } from "lucide-react"
+import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag } from 'lucide-react'
+import { fetchProducts, fetchCategories } from "../../api/api"
+import type { Product, Category, OrderItem, Order } from "../../types/inventario"
 
-// Datos de ejemplo - En una aplicación real vendrían del inventario
-const SAMPLE_PRODUCTS = [
-  { id: 1, name: "Cerveza Corona", category: "cervezas", price: 5.0, stock: 48, popular: true },
-  { id: 2, name: "Margarita", category: "cocteles", price: 8.5, stock: 15, popular: true },
-  { id: 3, name: "Whisky Jack Daniel's", category: "licores", price: 12.0, stock: 5, popular: false },
-  { id: 4, name: "Vino Tinto", category: "vinos", price: 15.0, stock: 12, popular: false },
-  { id: 5, name: "Mojito", category: "cocteles", price: 7.5, stock: 20, popular: true },
-  { id: 6, name: "Cerveza Heineken", category: "cervezas", price: 5.5, stock: 36, popular: false },
-  { id: 7, name: "Piña Colada", category: "cocteles", price: 9.0, stock: 18, popular: true },
-  { id: 8, name: "Tequila", category: "licores", price: 10.0, stock: 8, popular: false },
-]
-
-// Pedidos frecuentes predefinidos
+// Mantenemos los pedidos frecuentes por ahora, pero podrías considerar moverlos a la base de datos en el futuro
 const FREQUENT_ORDERS = [
   {
     name: "Happy Hour",
     items: [
-      { productId: 1, name: "Cerveza Corona", quantity: 4, price: 5.0 },
-      { productId: 2, name: "Margarita", quantity: 2, price: 8.5 },
+      { productId: 59, name: "TRES CORDILLERAS ROSADA", quantity: 4, price: 7500 },
+      { productId: 58, name: "cheetos", quantity: 2, price: 20 },
     ],
   },
   {
-    name: "Mesa VIP",
+    name: "Combo Salud",
     items: [
-      { productId: 3, name: "Whisky Jack Daniel's", quantity: 1, price: 12.0 },
-      { productId: 4, name: "Vino Tinto", quantity: 1, price: 15.0 },
+      { productId: 46, name: "acetaminofen", quantity: 1, price: 20 },
+      { productId: 58, name: "cheetos", quantity: 1, price: 20 },
     ],
   },
 ]
-
-// Datos de ejemplo para pedidos existentes
-const EXISTING_ORDERS = [
-  {
-    id: 1,
-    customerName: "Mesa 1",
-    items: [
-      { productId: 1, name: "Cerveza Corona", quantity: 2, price: 5.0 },
-      { productId: 3, name: "Whisky Jack Daniel's", quantity: 1, price: 12.0 },
-    ],
-    total: 22.0,
-    status: "in_progress",
-    createdAt: new Date(),
-    type: "mesa",
-    note: "Sin hielo en el whisky",
-  },
-  {
-    id: 2,
-    customerName: "Mesa 4",
-    items: [
-      { productId: 2, name: "Margarita", quantity: 3, price: 8.5 },
-      { productId: 4, name: "Vino Tinto", quantity: 1, price: 15.0 },
-    ],
-    total: 40.5,
-    status: "in_progress",
-    createdAt: new Date(),
-    type: "mesa",
-    note: "",
-  },
-  {
-    id: 3,
-    customerName: "Barra 2",
-    items: [
-      { productId: 1, name: "Cerveza Corona", quantity: 4, price: 5.0 },
-      { productId: 5, name: "Mojito", quantity: 2, price: 7.5 },
-    ],
-    total: 35.0,
-    status: "in_progress",
-    createdAt: new Date(),
-    type: "mesa",
-    note: "Mojitos sin menta",
-  },
-]
-
-// Add these new types to the OrderItem type
-type OrderItem = {
-  productId: number
-  quantity: number
-  price: number
-  name: string
-  serviceCharge?: number // Cargo de servicio individual
-  category?: string
-}
 
 type OrderFormProps = {
   onClose: () => void
@@ -99,7 +35,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   const [items, setItems] = useState<OrderItem[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [activeCategory, setActiveCategory] = useState("all")
-  const [showPopularOnly, setShowPopularOnly] = useState(false)
   const [note, setNote] = useState("")
   const [showFrequentOrders, setShowFrequentOrders] = useState(false)
   const [formType, setFormType] = useState<"mesa" | "llevar" | "editar">(
@@ -113,41 +48,35 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   const [showServiceChargeDialog, setShowServiceChargeDialog] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
 
-  // Add status update function
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true)
+      try {
+        const [productsData, categoriesData] = await Promise.all([fetchProducts(), fetchCategories()])
+        setProducts(productsData)
+        setCategories(categoriesData)
+        setError(null)
+      } catch (err) {
+        console.error("Error loading data:", err)
+        setError("Error al cargar los datos. Por favor, intente de nuevo.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
+
   const updateOrderStatus = (status: "pending" | "in_progress" | "completed") => {
     setOrderStatus(status)
   }
 
-  // Cargar datos si estamos editando un pedido existente
-  useEffect(() => {
-    if (editOrderId) {
-      const existingOrder = EXISTING_ORDERS.find((order) => order.id === editOrderId)
-      if (existingOrder) {
-        setCustomerName(existingOrder.customerName)
-        setItems(
-          existingOrder.items.map((item) => ({
-            ...item,
-            serviceCharge: 0,
-            category: SAMPLE_PRODUCTS.find((p) => p.id === item.productId)?.category,
-          })),
-        )
-        setNote(existingOrder.note || "")
-        setFormType(existingOrder.type as "mesa" | "llevar")
-      }
-    }
-  }, [editOrderId])
-
-  // Filtrar por búsqueda, categoría y popularidad
-  const filteredProducts = SAMPLE_PRODUCTS.filter(
-    (product) =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      product.stock > 0 &&
-      (activeCategory === "all" || product.category === activeCategory) &&
-      (!showPopularOnly || product.popular),
-  )
-
-  // Modify the addItem function to initialize serviceCharges
-  const addItem = (product: (typeof SAMPLE_PRODUCTS)[0]) => {
+  const addItem = (product: Product) => {
     const existingItem = items.find((item) => item.productId === product.id)
     if (existingItem) {
       setItems(items.map((item) => (item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)))
@@ -157,9 +86,9 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
         {
           productId: product.id,
           quantity: 1,
-          price: product.price,
-          name: product.name,
-          category: product.category,
+          price: product.precio_venta,
+          name: product.nombre,
+          category: product.categoria,
           serviceCharge: 0,
         },
       ])
@@ -187,19 +116,17 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
       frequentOrder.items.map((item) => ({
         ...item,
         serviceCharge: 0,
-        category: SAMPLE_PRODUCTS.find((p) => p.id === item.productId)?.category,
+        category: products.find((p) => p.id === item.productId)?.categoria,
       })),
     )
     setShowFrequentOrders(false)
   }
 
-  // Función para manejar el cargo de servicio por ítem
   const handleServiceCharge = (productId: number) => {
     setSelectedProductId(productId)
     setShowServiceChargeDialog(true)
   }
 
-  // Calcular el total incluyendo cargos de servicio
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
       const itemSubtotal = item.price * item.quantity
@@ -212,8 +139,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Aquí iría la lógica para guardar el pedido
     console.log({
       id: editOrderId,
       customerName,
@@ -234,75 +159,38 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     return formType === "llevar" ? "Pedido Para Llevar" : "Nuevo Pedido en Mesa"
   }
 
-  // Obtener categorías únicas
-  const categories = ["all", ...Array.from(new Set(SAMPLE_PRODUCTS.map((p) => p.category)))]
+  const uniqueCategories = ["all", ...Array.from(new Set(categories.map((c) => c.nombre)))]
 
-  // Si el pedido está completado, mostrar el recibo
-  if (orderCompleted) {
+  const filteredProducts: Product[] = products.filter(
+    (product) =>
+      product.nombre.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      product.cantidad > 0 &&
+      (activeCategory === "all" || String(product.categoria) === activeCategory),
+  )
+
+  if (isLoading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
-        <div className="w-full max-w-md rounded-lg border border-border/10 bg-card p-4 shadow-lg">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">Pedido Completado</h2>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando productos...</p>
+        </div>
+      </div>
+    )
+  }
 
-          <div className="flex flex-col items-center justify-center space-y-4 py-6">
-            <div className="rounded-full bg-green-500/20 p-4">
-              <Check className="h-8 w-8 text-green-500" />
-            </div>
-            <h3 className="text-xl font-bold">¡Pedido Completado!</h3>
-            <p className="text-center text-muted-foreground">
-              El pedido para {customerName} ha sido procesado correctamente.
-            </p>
-
-            <div className="w-full rounded-lg border border-border/10 bg-secondary/20 p-4 mt-4">
-              <div className="flex justify-between mb-2">
-                <span>Subtotal:</span>
-                <span>${items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}</span>
-              </div>
-
-              {items.some((item) => (item.serviceCharge || 0) > 0) && (
-                <div className="flex justify-between mb-2">
-                  <span>Servicio:</span>
-                  <span>${items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0).toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between mb-2 font-bold border-t border-border/10 pt-2">
-                <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between mb-2">
-                <span>Método de pago:</span>
-                <span>{paymentMethod === "cash" ? "Efectivo" : "Tarjeta"}</span>
-              </div>
-
-              {paymentMethod === "cash" && (
-                <>
-                  <div className="flex justify-between mb-2">
-                    <span>Recibido:</span>
-                    <span>${paymentAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span>Cambio:</span>
-                    <span>${change.toFixed(2)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-center mt-4">
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full">
+          <h2 className="text-lg font-semibold text-destructive mb-4">Error</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <div className="flex justify-end">
             <button
               onClick={onClose}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              <Receipt className="h-4 w-4" />
-              Cerrar e Imprimir Recibo
+              Cerrar
             </button>
           </div>
         </div>
@@ -310,11 +198,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     )
   }
 
-  // Si estamos mostrando opciones de pago para pedido para llevar
-
-  // Renderizar el formulario de pedido para llevar de manera más directa
-
-  // Formulario normal para pedidos en mesa o edición
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-4xl rounded-lg border border-border/10 bg-card p-4 shadow-lg my-4">
@@ -417,7 +300,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
               </div>
 
               <div className="mb-2 flex flex-wrap gap-2">
-                {categories.map((category) => (
+                {uniqueCategories.map((category) => (
                   <button
                     key={category}
                     type="button"
@@ -431,18 +314,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     {category === "all" ? "Todos" : category.charAt(0).toUpperCase() + category.slice(1)}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setShowPopularOnly(!showPopularOnly)}
-                  className={`flex items-center gap-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-                    showPopularOnly
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                  }`}
-                >
-                  <Star className="h-3 w-3" />
-                  Populares
-                </button>
               </div>
 
               <div className="grid gap-2 max-h-[300px] overflow-y-auto">
@@ -454,11 +325,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     className="flex items-center justify-between rounded-lg border border-border/10 bg-secondary/30 p-3 text-sm hover:bg-secondary/50"
                   >
                     <div className="flex items-center">
-                      {product.popular && <Star className="mr-2 h-3 w-3 text-primary" />}
-                      <span>{product.name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">({product.stock} disponibles)</span>
+                      <span>{product.nombre}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">({product.cantidad} disponibles)</span>
                     </div>
-                    <span className="text-primary">${product.price.toFixed(2)}</span>
+                    <span className="text-primary">${product.precio_venta.toFixed(2)}</span>
                   </button>
                 ))}
                 {filteredProducts.length === 0 && (
@@ -512,7 +382,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                       </div>
                     </div>
 
-                    {/* Service Charge Section */}
                     <div className="mt-2 border-t border-border/10 pt-2">
                       <button
                         type="button"
@@ -627,6 +496,8 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
               setItems(
                 items.map((item) => (item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item)),
               )
+              setShowServiceChargeDialog(false)
+              setSelectedProductId(null)
             }}
             initialValue={items.find((item) => item.productId === selectedProductId)?.serviceCharge || 0}
           />
@@ -691,4 +562,3 @@ function ServiceChargeDialog({
     </div>
   )
 }
-
