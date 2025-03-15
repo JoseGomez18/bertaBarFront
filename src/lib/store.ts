@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { Product, Order, Category } from "../types/inventario";
-import { fetchProducts, fetchCategories, createProduct, updateProduct, deleteProduct } from "../api/api";
+import { fetchProducts, fetchCategories, createProduct, updateProduct, deleteProduct, deletePedidos, fetchPedidos } from "../api/api";
 
 type Store = {
   products: Product[];
@@ -12,16 +12,18 @@ type Store = {
   addProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateProduct: (id: number, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
+  deletePedidos: (id: number) => Promise<void>;
   addOrder: (order: Omit<Order, "id" | "createdAt">) => void;
-  updateOrderStatus: (id: number, status: Order["status"]) => void;
+  updateOrderStatus: (id: number, status: Order["estado"]) => void;
   fetchProducts: () => Promise<void>;
+  fetchPedidos: () => Promise<void>;
   fetchCategories: () => Promise<void>;
 };
 
 export const useStore = create<Store>((set) => ({
   products: [],
+  orders: [], // Corrección: antes tenías "pedidos" en lugar de "orders"
   categories: [],
-  orders: [],
   successMessage: null,
 
   setSuccessMessage: (message) => set({ successMessage: message }),
@@ -32,6 +34,15 @@ export const useStore = create<Store>((set) => ({
       set({ products: data });
     } catch (error) {
       console.error("Error al obtener productos:", error);
+    }
+  },
+  fetchPedidos: async () => {
+    try {
+      const data = await fetchPedidos();
+      console.log("Datos obtenidos de fetchPedidos:", data);
+      set({ orders: data });
+    } catch (error) {
+      console.error("Error al obtener pedidos:", error);
     }
   },
 
@@ -48,9 +59,9 @@ export const useStore = create<Store>((set) => ({
     try {
       const newProduct = await createProduct(product);
       set((state) => ({
-         products: [...state.products, newProduct],
-         successMessage: "Producto agregado con éxito",
-        }));
+        products: [...state.products, newProduct],
+        successMessage: "Producto agregado con éxito",
+      }));
     } catch (error) {
       console.error("Error al agregar producto:", error);
     }
@@ -79,6 +90,17 @@ export const useStore = create<Store>((set) => ({
       }));
     } catch (error) {
       console.error("Error al eliminar producto:", error);
+    }
+  },
+  deletePedidos: async (id) => {
+    try {
+      await deletePedidos(id);
+      set((state) => ({
+        orders: state.orders.filter((order) => order.id !== id), // Cambio aquí
+        successMessage: "Pedido eliminado con éxito",
+      }));
+    } catch (error) {
+      console.error("Error al eliminar pedido:", error);
     }
   },
 
