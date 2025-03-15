@@ -13,6 +13,8 @@ export type Product = {
     quantity: number;
     price: number;
     name: string;
+    serviceCharge?: number; // Agregado como opcional
+    category?: number; //
   };
   
   export type Order = {
@@ -22,5 +24,11 @@ export type Product = {
     total: number;
     status: "pending" | "in_progress" | "completed";
     createdAt: Date;
+    type?: "mesa" | "llevar"; // Agregado como opcional
+    note?: string;
   };
   
+  export type Category = {
+    id: number;
+    nombre: string;
+  };

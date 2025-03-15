@@ -6,7 +6,7 @@ import { OrderList } from "../../components/orders/order-list"
 import { OrderForm } from "../../components/orders/order-form"
 import { OrderFilters } from "../../components/orders/order-filters"
 import { OrderStats } from "../../components/orders/order-stats"
-import { OrderNotifications } from "../../components/orders/order-notifications"
+// import { OrderNotifications } from "../../components/orders/order-notifications"
 import { ActiveOrders } from "../../components/orders/active-orders"
 
 export default function OrdersPage() {
@@ -24,12 +24,12 @@ export default function OrdersPage() {
     maxAmount: "",
   })
 
-  // Simulación de notificaciones
-  const notifications = [
-    { id: 1, message: "Nuevo pedido de Mesa 8", time: "Hace 5 minutos", read: false },
-    { id: 2, message: "Pedido #12 listo para entregar", time: "Hace 10 minutos", read: false },
-    { id: 3, message: "Stock bajo de Cerveza Corona", time: "Hace 30 minutos", read: true },
-  ]
+//   // Simulación de notificaciones
+//   const notifications = [
+//     { id: 1, message: "Nuevo pedido de Mesa 8", time: "Hace 5 minutos", read: false },
+//     { id: 2, message: "Pedido #12 listo para entregar", time: "Hace 10 minutos", read: false },
+//     { id: 3, message: "Stock bajo de Cerveza Corona", time: "Hace 30 minutos", read: true },
+//   ]
 
   return (
     <div className="space-y-6 animate-in">
@@ -40,7 +40,7 @@ export default function OrdersPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button
+          {/* <button
             onClick={() => setShowNotifications(!showNotifications)}
             className="relative rounded-lg border border-border/10 bg-secondary/30 p-2 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
           >
@@ -50,7 +50,7 @@ export default function OrdersPage() {
                 {notifications.filter((n) => !n.read).length}
               </span>
             )}
-          </button>
+          </button> */}
 
           <button
             onClick={() => setShowStats(!showStats)}
@@ -74,7 +74,7 @@ export default function OrdersPage() {
 
       {showStats && <OrderStats />}
 
-      {showNotifications && <OrderNotifications notifications={notifications} />}
+      {/* {showNotifications && <OrderNotifications notifications={notifications} />} */}
 
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="relative flex-1">
