@@ -368,7 +368,7 @@ export function OrderList({
                     <div className="flex items-center justify-end gap-1 text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       <span>{order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
-                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
@@ -429,9 +429,9 @@ export function OrderList({
 
 export function OrderStatus({ status }: { status: string }) {
   const statusMap = {
-    pending: { label: "Pendiente", color: "bg-yellow-500/20 text-yellow-500" },
+    pendiente: { label: "Pendiente", color: "bg-yellow-500/20 text-yellow-500" },
     in_progress: { label: "En Preparación", color: "bg-blue-500/20 text-blue-500" },
-    completed: { label: "Completado", color: "bg-green-500/20 text-green-500" },
+    completado: { label: "Completado", color: "bg-green-500/20 text-green-500" },
   }
 
   const { label, color } = statusMap[status as keyof typeof statusMap]

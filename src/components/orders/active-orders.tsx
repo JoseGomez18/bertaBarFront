@@ -6,56 +6,10 @@ import { OrderForm } from "./order-form"
 import axios from "axios"
 import { useEffect, useState } from "react"
 import { useStore } from "../../lib/store"
-
-
-// Datos de ejemplo - En una aplicación real vendrían de una base de datos
-// const ACTIVE_ORDERS = [
-//   {
-//     id: 2,
-//     customerName: "Mesa 4",
-//     items: [
-//       { productId: 2, name: "Margarita", quantity: 3, price: 8.5 },
-//       { productId: 4, name: "Vino Tinto", quantity: 1, price: 15.0 },
-//     ],
-//     total: 40.5,
-//     status: "in_progress",
-//     createdAt: new Date(2023, 5, 15, 21, 15),
-//     paymentMethod: "card",
-//     note: "",
-//     timeElapsed: 12, // minutos desde que se creó el pedido
-//     estimatedTime: 15, // tiempo estimado total en minutos
-//   },
-//   {
-//     id: 3,
-//     customerName: "Barra 2",
-//     items: [{ productId: 1, name: "Cerveza Corona", quantity: 4, price: 5.0 }],
-//     total: 20.0,
-//     status: "pending",
-//     createdAt: new Date(2023, 5, 15, 21, 45),
-//     paymentMethod: "cash",
-//     note: "",
-//     timeElapsed: 5,
-//     estimatedTime: 10,
-//   },
-//   {
-//     id: 4,
-//     customerName: "Mesa 7",
-//     items: [
-//       { productId: 3, name: "Whisky Jack Daniel's", quantity: 2, price: 12.0 },
-//       { productId: 2, name: "Margarita", quantity: 2, price: 8.5 },
-//     ],
-//     total: 41.0,
-//     status: "pending",
-//     createdAt: new Date(2023, 5, 15, 22, 0),
-//     paymentMethod: "card",
-//     note: "Cliente frecuente",
-//     timeElapsed: 3,
-//     estimatedTime: 15,
-//   },
-// ]
+import { Order } from "@/src/types/inventario"
 
 export function ActiveOrders() {
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null)
   const { orders, deletePedidos, fetchPedidos } = useStore()
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>({})
@@ -71,14 +25,14 @@ export function ActiveOrders() {
     console.log("Estado de pedidos actualizado:", orders);
   }, [orders]);
 
-  // Inicializar todos los pedidos como expandidos
-  useState(() => {
-    const expanded: Record<number, boolean> = {}
+  // Inicializar todos los pedidos como no expandidos
+  useEffect(() => {
+    const expanded: Record<number, boolean> = {};
     orders.forEach((order) => {
-      expanded[order.id] = true
-    })
-    setExpandedOrders(expanded)
-  })
+      expanded[order.id] = false;
+    });
+    setExpandedOrders(expanded);
+  }, [orders]);
 
   const handleAddToOrder = (orderId: number) => {
     setEditingOrderId(orderId)
@@ -87,18 +41,17 @@ export function ActiveOrders() {
   const handleCloseOrderForm = () => {
     setEditingOrderId(null)
   }
-
   const toggleOrderExpanded = (orderId: number) => {
-    setExpandedOrders((prev) => ({
+    setExpandedOrders(prev => ({
       ...prev,
-      [orderId]: !prev[orderId],
-    }))
-  }
+      [orderId]: !prev[orderId]
+    }));
+  };
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2">
-        {orders.map((order) => (
+        {orders.filter((order) => order.estado === "pendiente").map((order) => (
           <div
             key={order.id}
             className={`relative rounded-lg border-2 ${order.estado === "pendiente"
@@ -118,7 +71,7 @@ export function ActiveOrders() {
                   <h3 className="font-medium">{order.nombre}</h3>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    {/* <span>{order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</span> */}
+                    <span>{order.fecha.toString()}</span>
                   </div>
                 </div>
                 <div
@@ -127,11 +80,11 @@ export function ActiveOrders() {
                     : "bg-blue-500/30 text-blue-500 border border-blue-500/20"
                     }`}
                 >
-                  {order.estado === "pendiente" ? "Pendiente" : "En Preparación"}
+                  {order.estado === "pendiente" ? "Pendiente" : "completado"}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-medium">${order.total.toFixed(2)}</span>
+                <span className="font-medium">${order.total}</span>
                 {/* <span className="font-medium">$2000</span> */}
                 {expandedOrders[order.id] ? (
                   <ChevronUp className="h-5 w-5 text-muted-foreground" />
@@ -163,21 +116,6 @@ export function ActiveOrders() {
                       <span className="text-xs font-medium">
                         {order.productos.reduce((sum, item) => sum + item.cantidad, 0)} items
                       </span>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      <AlarmClock className="h-3 w-3 text-muted-foreground" />
-                      {/* <span
-                        className={`${order.timeElapsed > order.estimatedTime
-                          ? "text-red-500"
-                          : order.timeElapsed > order.estimatedTime * 0.8
-                            ? "text-yellow-500"
-                            : "text-green-500"
-                          }`}
-                      >
-                        {order.timeElapsed} min
-                      </span> */}
-                      <span className="text-muted-foreground">/</span>
-                      {/* <span className="text-muted-foreground">{order.estimatedTime} min</span> */}
                     </div>
                   </div>
                 </div>

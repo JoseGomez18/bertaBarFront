@@ -9,7 +9,7 @@ export type Product = {
 };
 
 export type OrderItem = {
-  // productId: number;
+  productId: number;
   cantidad: number;
   price: number;
   producto: string;
@@ -23,7 +23,7 @@ export type Order = {
   productos: OrderItem[];
   total: number;
   estado: "pendiente" | "in_progress" | "completado";
-  createdAt: Date;
+  fecha: Date;
   type?: "mesa" | "llevar"; // Agregado como opcional
   note?: string;
 };

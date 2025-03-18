@@ -27,16 +27,17 @@ type OrderDetailsProps = {
 }
 
 // Add this utility function at the top of the file
-function formatTime(date: Date) {
-  return date.toLocaleTimeString("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true, 
-  })  
-}
+// function formatTime(date: Date) {
+//   return date.toLocaleTimeString("es-CO", {
+//     hour: "2-digit",
+//     minute: "2-digit",
+//     hour12: true,
+//   })
+// }
 
 export function OrderDetails({ order, onClose }: OrderDetailsProps) {
-  const [status, setStatus] = useState(order.status)
+  const [status, setStatus] = useState(order.estado)
+  console.log(order)
   const [isEditing, setIsEditing] = useState(false)
   const [discount, setDiscount] = useState(0)
   const [serviceCharge, setServiceCharge] = useState(0)
@@ -114,7 +115,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
     })
   }
 
-  const subtotal = order.items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
+  const subtotal = order.productos.reduce((sum: number, item: any) => sum + item.price * item.cantidad, 0)
   const discountAmount = (subtotal * discount) / 100
 
   // Calcular el cargo por servicio sumando los cargos individuales por ítem
@@ -142,7 +143,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
             </div>
             <h3 className="text-xl font-bold">¡Pedido Completado!</h3>
             <p className="text-center text-muted-foreground">
-              El pedido para {order.customerName} ha sido procesado correctamente.
+              El pedido para {order.nombre} ha sido procesado correctamente.
             </p>
 
             <div className="w-full rounded-lg border border-border/10 bg-secondary/20 p-4 mt-4">
@@ -167,7 +168,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
 
               <div className="flex justify-between mb-4 font-bold border-t border-border/10 pt-2">
                 <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
+                <span>${total}</span>
               </div>
 
               <div className="flex justify-between mb-2">
@@ -212,11 +213,11 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold">
-              {isProcessingPayment ? `Procesar Pago - ${order.customerName}` : `Detalles del Pedido #${order.id}`}
+              {isProcessingPayment ? `Procesar Pago - ${order.nombre}` : `Detalles del Pedido #${order.id}`}
             </h2>
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
               <Clock className="h-3 w-3" />
-              <span>{formatTime(order.createdAt)}</span>
+              {/* <span>{formatTime(order.createdAt)}</span> */}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -231,11 +232,10 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                 </button>
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className={`rounded-lg p-2 ${
-                    isEditing
-                      ? "bg-primary/20 text-primary"
-                      : "text-muted-foreground hover:bg-secondary/30 hover:text-foreground"
-                  }`}
+                  className={`rounded-lg p-2 ${isEditing
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/30 hover:text-foreground"
+                    }`}
                   title="Editar pedido"
                 >
                   <Edit className="h-4 w-4" />
@@ -270,7 +270,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
             <>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="font-medium">{order.customerName}</h3>
+                  <h3 className="font-medium">{order.nombre}</h3>
                 </div>
                 <OrderStatus status={status} />
               </div>
@@ -287,11 +287,11 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item: any) => (
+                    {order.productos.map((item: any) => (
                       <tr key={item.productId} className="border-t border-border/10">
                         <td className="px-4 py-2 text-sm">
                           <div className="flex flex-col">
-                            <span>{item.name}</span>
+                            <span>{item.producto}</span>
                             {isEditing && (
                               <button
                                 type="button"
@@ -320,10 +320,10 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-center text-sm">{item.quantity}</td>
-                        <td className="px-4 py-2 text-right text-sm">${item.price.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-center text-sm">{item.cantidad}</td>
+                        <td className="px-4 py-2 text-right text-sm">${item.precio}</td>
                         <td className="px-4 py-2 text-right text-sm font-medium">
-                          ${(item.quantity * item.price).toFixed(2)}
+                          ${(item.cantidad * item.precio)}
                         </td>
                       </tr>
                     ))}
@@ -333,26 +333,14 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                       <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium">
                         Subtotal
                       </td>
-                      <td className="px-4 py-2 text-right text-sm font-medium">${subtotal.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right text-sm font-medium">${order.subtotal}</td>
                     </tr>
-                    {isEditing && (
-                      <tr>
-                        <td colSpan={2} className="px-4 py-2 text-right text-sm">
-                          Descuento (%)
-                        </td>
-                        <td className="px-4 py-2">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={discount}
-                            onChange={(e) => setDiscount(Number(e.target.value))}
-                            className="w-20 rounded border border-border/10 bg-secondary/30 px-2 py-1 text-right text-sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2 text-right text-sm text-red-500">-${discountAmount.toFixed(2)}</td>
-                      </tr>
-                    )}
+                    <tr className="border-t border-border/10">
+                      <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium">
+                        Servicio
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-medium">${order.servicio}</td>
+                    </tr>
                     {serviceChargeAmount > 0 && (
                       <tr>
                         <td colSpan={3} className="px-4 py-2 text-right text-sm">
@@ -365,7 +353,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                       <td colSpan={3} className="px-4 py-2 text-right">
                         Total
                       </td>
-                      <td className="px-4 py-2 text-right text-primary">${total.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right text-primary">${order.total}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -421,11 +409,10 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                   />
                   <button
                     onClick={() => setShowSplitBill(!showSplitBill)}
-                    className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
-                      showSplitBill
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/10 bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
+                    className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${showSplitBill
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/10 bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
                   >
                     <Split className="h-4 w-4" />
                     Dividir
@@ -708,9 +695,8 @@ function StatusButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
-        statusColors[status as keyof typeof statusColors]
-      } ${isActive ? "ring-2 ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100"}`}
+      className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${statusColors[status as keyof typeof statusColors]
+        } ${isActive ? "ring-2 ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100"}`}
     >
       {isActive && <Check className="h-3 w-3" />}
       {children}
@@ -734,11 +720,10 @@ function PaymentButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
-        selected
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border/10 bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-      }`}
+      className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${selected
+        ? "border-primary bg-primary/10 text-primary"
+        : "border-border/10 bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+        }`}
     >
       {icon}
       {label}

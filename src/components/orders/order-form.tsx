@@ -79,15 +79,15 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   const addItem = (product: Product) => {
     const existingItem = items.find((item) => item.productId === product.id)
     if (existingItem) {
-      setItems(items.map((item) => (item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)))
+      setItems(items.map((item) => (item.productId === product.id ? { ...item, quantity: item.cantidad + 1 } : item)))
     } else {
       setItems([
         ...items,
         {
           productId: product.id,
-          quantity: 1,
+          producto: product.nombre,
+          cantidad: product.cantidad,
           price: product.precio_venta,
-          name: product.nombre,
           category: product.categoria,
           serviceCharge: 0,
         },
@@ -99,7 +99,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setItems(
       items.map((item) => {
         if (item.productId === productId) {
-          const newQuantity = item.quantity + delta
+          const newQuantity = item.cantidad + delta
           return newQuantity > 0 ? { ...item, quantity: newQuantity } : item
         }
         return item
@@ -111,16 +111,16 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setItems(items.filter((item) => item.productId !== productId))
   }
 
-  const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
-    setItems(
-      frequentOrder.items.map((item) => ({
-        ...item,
-        serviceCharge: 0,
-        category: products.find((p) => p.id === item.productId)?.categoria,
-      })),
-    )
-    setShowFrequentOrders(false)
-  }
+  // const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
+  //   setItems(
+  //     frequentOrder.items.map((item) => ({
+  //       ...item,
+  //       serviceCharge: 0,
+  //       category: products.find((p) => p.id === item.productId)?.categoria,
+  //     })),
+  //   )
+  //   setShowFrequentOrders(false)
+  // }
 
   const handleServiceCharge = (productId: number) => {
     setSelectedProductId(productId)
@@ -129,7 +129,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
-      const itemSubtotal = item.price * item.quantity
+      const itemSubtotal = item.price * item.cantidad
       const serviceCharge = item.serviceCharge || 0
       return sum + itemSubtotal + serviceCharge
     }, 0)
@@ -209,9 +209,8 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("mesa")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
-                    formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   <Coffee className="h-3 w-3" />
                   Mesa
@@ -219,11 +218,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("llevar")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
-                    formType === "llevar"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "llevar"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   <ShoppingBag className="h-3 w-3" />
                   Para Llevar
@@ -268,7 +266,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     <button
                       key={index}
                       type="button"
-                      onClick={() => loadFrequentOrder(order)}
+                      // onClick={() => loadFrequentOrder(order)}
                       className="flex w-full items-start justify-between rounded-lg p-2 text-left text-sm hover:bg-secondary/30"
                     >
                       <div>
@@ -305,11 +303,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     key={category}
                     type="button"
                     onClick={() => setActiveCategory(category)}
-                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-                      activeCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${activeCategory === category
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
                   >
                     {category === "all" ? "Todos" : category.charAt(0).toUpperCase() + category.slice(1)}
                   </button>
@@ -350,7 +347,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-sm">{item.name}</span>
+                        <span className="text-sm">{item.producto}</span>
                         <span className="ml-2 text-xs text-primary">${item.price.toFixed(2)}</span>
                       </div>
 
@@ -363,7 +360,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                           >
                             <Minus className="h-4 w-4" />
                           </button>
-                          <span className="text-sm">{item.quantity}</span>
+                          <span className="text-sm">{item.cantidad}</span>
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.productId, 1)}
@@ -386,11 +383,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                       <button
                         type="button"
                         onClick={() => handleServiceCharge(item.productId)}
-                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${
-                          (item.serviceCharge || 0) > 0
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
-                        }`}
+                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${(item.serviceCharge || 0) > 0
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
+                          }`}
                       >
                         <Plus className="h-3 w-3" />
                         {(item.serviceCharge || 0) > 0
@@ -434,33 +430,30 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("pending")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "pending"
-                      ? "bg-yellow-500/20 text-yellow-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "pending"
+                    ? "bg-yellow-500/20 text-yellow-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   Pendiente
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("in_progress")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "in_progress"
-                      ? "bg-blue-500/20 text-blue-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "in_progress"
+                    ? "bg-blue-500/20 text-blue-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   En Preparación
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("completed")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "completed"
-                      ? "bg-green-500/20 text-green-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "completed"
+                    ? "bg-green-500/20 text-green-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   Completado
                 </button>
