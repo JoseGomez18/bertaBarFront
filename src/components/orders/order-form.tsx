@@ -2,9 +2,10 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag } from 'lucide-react'
-import { fetchProducts, fetchCategories } from "../../api/api"
-import type { Product, Category, OrderItem, Order } from "../../types/inventario"
+import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag, AlertCircle } from "lucide-react"
+import { fetchProducts, fetchCategories, registrarVenta } from "../../api/api"
+import type { Product, Category, OrderItem } from "../../types/inventario"
+import { useStore } from "../../lib/store"
 
 // Mantenemos los pedidos frecuentes por ahora, pero podrías considerar moverlos a la base de datos en el futuro
 const FREQUENT_ORDERS = [
@@ -47,6 +48,9 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   const [change, setChange] = useState<number>(0)
   const [showServiceChargeDialog, setShowServiceChargeDialog] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -79,14 +83,14 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   const addItem = (product: Product) => {
     const existingItem = items.find((item) => item.productId === product.id)
     if (existingItem) {
-      setItems(items.map((item) => (item.productId === product.id ? { ...item, quantity: item.cantidad + 1 } : item)))
+      setItems(items.map((item) => (item.productId === product.id ? { ...item, cantidad: item.cantidad + 1 } : item)))
     } else {
       setItems([
         ...items,
         {
           productId: product.id,
           producto: product.nombre,
-          cantidad: product.cantidad,
+          cantidad: 1, // Iniciar con cantidad 1
           price: product.precio_venta,
           category: product.categoria,
           serviceCharge: 0,
@@ -100,7 +104,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
       items.map((item) => {
         if (item.productId === productId) {
           const newQuantity = item.cantidad + delta
-          return newQuantity > 0 ? { ...item, quantity: newQuantity } : item
+          return newQuantity > 0 ? { ...item, cantidad: newQuantity } : item
         }
         return item
       }),
@@ -111,16 +115,20 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setItems(items.filter((item) => item.productId !== productId))
   }
 
-  // const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
-  //   setItems(
-  //     frequentOrder.items.map((item) => ({
-  //       ...item,
-  //       serviceCharge: 0,
-  //       category: products.find((p) => p.id === item.productId)?.categoria,
-  //     })),
-  //   )
-  //   setShowFrequentOrders(false)
-  // }
+  const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
+    // Transformar los items del pedido frecuente al formato esperado por el componente
+    const orderItems: OrderItem[] = frequentOrder.items.map((item) => ({
+      productId: item.productId,
+      producto: item.name,
+      cantidad: item.quantity,
+      price: item.price,
+      category: products.find((p) => p.id === item.productId)?.categoria,
+      serviceCharge: 0,
+    }))
+
+    setItems(orderItems)
+    setShowFrequentOrders(false)
+  }
 
   const handleServiceCharge = (productId: number) => {
     setSelectedProductId(productId)
@@ -135,21 +143,48 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     }, 0)
   }
 
-  const total = calculateTotal()
+  const calculateServiceChargeTotal = () => {
+    return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0)
+  }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const total = calculateTotal()
+  const serviceChargeTotal = calculateServiceChargeTotal()
+
+  // Modificar la función handleSubmit para actualizar el store después de registrar la venta
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log({
-      id: editOrderId,
-      customerName,
-      items,
-      total,
-      status: "pending",
-      createdAt: new Date(),
-      note,
-      type: formType,
-    })
-    onClose()
+
+    if (items.length === 0 || !customerName) {
+      setSubmitError("Debe agregar al menos un producto y proporcionar un nombre para el pedido.")
+      return
+    }
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      // Registrar la venta - la función registrarVenta se encarga de transformar los items
+      const result = await registrarVenta(customerName, items, serviceChargeTotal)
+
+      console.log("Venta registrada exitosamente:", result)
+      setSubmitSuccess(true)
+
+      // Actualizar el store para indicar que se debe refrescar la lista de pedidos
+      useStore.getState().triggerRefresh()
+
+      // También podemos actualizar los pedidos directamente
+      useStore.getState().fetchPedidos()
+
+      // Resetear el formulario después de 2 segundos
+      setTimeout(() => {
+        onClose()
+      }, 2000)
+    } catch (error) {
+      console.error("Error al registrar la venta:", error)
+      setSubmitError(error instanceof Error ? error.message : "Error desconocido al registrar la venta")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const getFormTitle = () => {
@@ -198,6 +233,28 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     )
   }
 
+  if (submitSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="bg-card p-6 rounded-lg shadow-lg max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-8 w-8 text-green-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-foreground mb-2">¡Venta Registrada!</h2>
+          <p className="text-muted-foreground mb-6">La venta se ha registrado exitosamente.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-4xl rounded-lg border border-border/10 bg-card p-4 shadow-lg my-4">
@@ -209,8 +266,9 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("mesa")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
-                    }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
+                    formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
+                  }`}
                 >
                   <Coffee className="h-3 w-3" />
                   Mesa
@@ -218,10 +276,11 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("llevar")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "llevar"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary/30 text-muted-foreground"
-                    }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
+                    formType === "llevar"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/30 text-muted-foreground"
+                  }`}
                 >
                   <ShoppingBag className="h-3 w-3" />
                   Para Llevar
@@ -233,6 +292,13 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {submitError && (
+          <div className="mb-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start">
+            <AlertCircle className="h-5 w-5 text-destructive mr-2 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{submitError}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -266,7 +332,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     <button
                       key={index}
                       type="button"
-                      // onClick={() => loadFrequentOrder(order)}
+                      onClick={() => loadFrequentOrder(order)}
                       className="flex w-full items-start justify-between rounded-lg p-2 text-left text-sm hover:bg-secondary/30"
                     >
                       <div>
@@ -303,10 +369,11 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     key={category}
                     type="button"
                     onClick={() => setActiveCategory(category)}
-                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${activeCategory === category
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                      }`}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                      activeCategory === category
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
                   >
                     {category === "all" ? "Todos" : category.charAt(0).toUpperCase() + category.slice(1)}
                   </button>
@@ -383,10 +450,11 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                       <button
                         type="button"
                         onClick={() => handleServiceCharge(item.productId)}
-                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${(item.serviceCharge || 0) > 0
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
-                          }`}
+                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${
+                          (item.serviceCharge || 0) > 0
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
+                        }`}
                       >
                         <Plus className="h-3 w-3" />
                         {(item.serviceCharge || 0) > 0
@@ -430,30 +498,33 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("pending")}
-                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "pending"
-                    ? "bg-yellow-500/20 text-yellow-500"
-                    : "bg-secondary/30 text-muted-foreground"
-                    }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${
+                    orderStatus === "pending"
+                      ? "bg-yellow-500/20 text-yellow-500"
+                      : "bg-secondary/30 text-muted-foreground"
+                  }`}
                 >
                   Pendiente
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("in_progress")}
-                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "in_progress"
-                    ? "bg-blue-500/20 text-blue-500"
-                    : "bg-secondary/30 text-muted-foreground"
-                    }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${
+                    orderStatus === "in_progress"
+                      ? "bg-blue-500/20 text-blue-500"
+                      : "bg-secondary/30 text-muted-foreground"
+                  }`}
                 >
                   En Preparación
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("completed")}
-                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "completed"
-                    ? "bg-green-500/20 text-green-500"
-                    : "bg-secondary/30 text-muted-foreground"
-                    }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${
+                    orderStatus === "completed"
+                      ? "bg-green-500/20 text-green-500"
+                      : "bg-secondary/30 text-muted-foreground"
+                  }`}
                 >
                   Completado
                 </button>
@@ -471,10 +542,19 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
             </button>
             <button
               type="submit"
-              disabled={items.length === 0 || !customerName}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              disabled={items.length === 0 || !customerName || isSubmitting}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
             >
-              {editOrderId ? "Actualizar Pedido" : "Crear Pedido"}
+              {isSubmitting ? (
+                <>
+                  <div className="h-4 w-4 border-t-2 border-r-2 border-primary-foreground rounded-full animate-spin"></div>
+                  Procesando...
+                </>
+              ) : editOrderId ? (
+                "Actualizar Pedido"
+              ) : (
+                "Crear Pedido"
+              )}
             </button>
           </div>
         </form>
@@ -555,3 +635,4 @@ function ServiceChargeDialog({
     </div>
   )
 }
+

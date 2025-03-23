@@ -1,213 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Clock, CreditCard, DollarSign, Eye, FileText } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { Clock, Eye, Filter, Search, X, RefreshCw } from "lucide-react"
 import { OrderDetails } from "./order-details"
+import { fetchPedidos } from "../../api/api"
+import { OrderFilters } from "./order-filters"
+import { useStore } from "../../lib/store"
 
-// Datos de ejemplo - En una aplicación real vendrían de una base de datos
-const SAMPLE_ORDERS = [
-  {
-    id: 1,
-    customerName: "Mesa 1",
-    items: [
-      { productId: 1, name: "Cerveza Corona", quantity: 2, price: 5.0 },
-      { productId: 3, name: "Whisky Jack Daniel's", quantity: 1, price: 12.0 },
-    ],
-    total: 22.0,
-    status: "completed",
-    createdAt: new Date(2024, 2, 6, 20, 30),
-    paymentMethod: "cash",
-    note: "Sin hielo en el whisky",
-  },
-  {
-    id: 2,
-    customerName: "Mesa 4",
-    items: [
-      { productId: 2, name: "Margarita", quantity: 3, price: 8.5 },
-      { productId: 4, name: "Vino Tinto", quantity: 1, price: 15.0 },
-    ],
-    total: 40.5,
-    status: "in_progress",
-    createdAt: new Date(2024, 2, 6, 21, 15),
-    paymentMethod: "card",
-    note: "",
-  },
-  {
-    id: 3,
-    customerName: "Barra 2",
-    items: [
-      { productId: 1, name: "Cerveza Corona", quantity: 4, price: 5.0 },
-      { productId: 5, name: "Mojito", quantity: 2, price: 7.5 },
-    ],
-    total: 35.0,
-    status: "pending",
-    createdAt: new Date(2024, 2, 6, 21, 45),
-    paymentMethod: "cash",
-    note: "Mojitos sin menta",
-  },
-  {
-    id: 4,
-    customerName: "Mesa 7",
-    items: [
-      { productId: 3, name: "Whisky Jack Daniel's", quantity: 2, price: 12.0 },
-      { productId: 2, name: "Margarita", quantity: 2, price: 8.5 },
-      { productId: 6, name: "Nachos con Queso", quantity: 1, price: 8.0 },
-    ],
-    total: 49.0,
-    status: "pending",
-    createdAt: new Date(2024, 2, 6, 22, 0),
-    paymentMethod: "card",
-    note: "Cliente frecuente",
-  },
-  {
-    id: 5,
-    customerName: "Mesa 3",
-    items: [
-      { productId: 4, name: "Vino Tinto", quantity: 1, price: 15.0 },
-      { productId: 7, name: "Tabla de Quesos", quantity: 1, price: 18.0 },
-    ],
-    total: 33.0,
-    status: "completed",
-    createdAt: new Date(2024, 2, 6, 19, 30),
-    paymentMethod: "cash",
-    note: "",
-  },
-  {
-    id: 6,
-    customerName: "Mesa 5",
-    items: [
-      { productId: 2, name: "Margarita", quantity: 4, price: 8.5 },
-      { productId: 8, name: "Alitas BBQ", quantity: 2, price: 10.0 },
-    ],
-    total: 54.0,
-    status: "in_progress",
-    createdAt: new Date(2024, 2, 6, 20, 45),
-    paymentMethod: "card",
-    note: "Alitas extra picantes",
-  },
-  {
-    id: 7,
-    customerName: "Barra 1",
-    items: [
-      { productId: 3, name: "Whisky Jack Daniel's", quantity: 1, price: 12.0 },
-      { productId: 9, name: "Papas Fritas", quantity: 1, price: 5.0 },
-    ],
-    total: 17.0,
-    status: "completed",
-    createdAt: new Date(2024, 2, 6, 19, 0),
-    paymentMethod: "cash",
-    note: "Cliente habitual",
-  },
-  {
-    id: 8,
-    customerName: "Mesa 8",
-    items: [
-      { productId: 10, name: "Gin Tonic", quantity: 2, price: 10.0 },
-      { productId: 11, name: "Ensalada César", quantity: 1, price: 12.0 },
-    ],
-    total: 32.0,
-    status: "pending",
-    createdAt: new Date(2024, 2, 6, 21, 30),
-    paymentMethod: "card",
-    note: "Sin anchoas en la ensalada",
-  },
-  {
-    id: 9,
-    customerName: "Mesa 2",
-    items: [
-      { productId: 12, name: "Cerveza Heineken", quantity: 6, price: 5.5 },
-      { productId: 13, name: "Nachos con Guacamole", quantity: 2, price: 9.0 },
-    ],
-    total: 51.0,
-    status: "in_progress",
-    createdAt: new Date(2024, 2, 6, 22, 15),
-    paymentMethod: "cash",
-    note: "Extra guacamole",
-  },
-  {
-    id: 10,
-    customerName: "Barra 3",
-    items: [
-      { productId: 14, name: "Cuba Libre", quantity: 3, price: 8.0 },
-      { productId: 15, name: "Tequeños", quantity: 2, price: 7.0 },
-    ],
-    total: 38.0,
-    status: "completed",
-    createdAt: new Date(2024, 2, 6, 20, 0),
-    paymentMethod: "card",
-    note: "",
-  },
-  {
-    id: 11,
-    customerName: "Mesa 6",
-    items: [
-      { productId: 16, name: "Piña Colada", quantity: 2, price: 9.0 },
-      { productId: 17, name: "Camarones al Ajillo", quantity: 1, price: 15.0 },
-    ],
-    total: 33.0,
-    status: "pending",
-    createdAt: new Date(2024, 2, 6, 21, 0),
-    paymentMethod: "card",
-    note: "Sin coco en las piñas coladas",
-  },
-  {
-    id: 12,
-    customerName: "Mesa 9",
-    items: [
-      { productId: 18, name: "Sangría", quantity: 1, price: 20.0 },
-      { productId: 19, name: "Tabla Mixta", quantity: 1, price: 25.0 },
-    ],
-    total: 45.0,
-    status: "in_progress",
-    createdAt: new Date(2024, 2, 6, 20, 15),
-    paymentMethod: "cash",
-    note: "Para compartir",
-  },
-  {
-    id: 13,
-    customerName: "Barra 4",
-    items: [
-      { productId: 20, name: "Shot Tequila", quantity: 4, price: 5.0 },
-      { productId: 21, name: "Limón y Sal", quantity: 1, price: 1.0 },
-    ],
-    total: 21.0,
-    status: "completed",
-    createdAt: new Date(2024, 2, 6, 22, 30),
-    paymentMethod: "cash",
-    note: "",
-  },
-  {
-    id: 14,
-    customerName: "Mesa 10",
-    items: [
-      { productId: 22, name: "Botella Vino Tinto", quantity: 1, price: 45.0 },
-      { productId: 23, name: "Queso Manchego", quantity: 1, price: 12.0 },
-    ],
-    total: 57.0,
-    status: "pending",
-    createdAt: new Date(2024, 2, 6, 21, 45),
-    paymentMethod: "card",
-    note: "Vino a temperatura ambiente",
-  },
-  {
-    id: 15,
-    customerName: "Mesa 11",
-    items: [
-      { productId: 24, name: "Cerveza Artesanal", quantity: 3, price: 7.0 },
-      { productId: 25, name: "Hamburguesa", quantity: 2, price: 12.0 },
-    ],
-    total: 45.0,
-    status: "in_progress",
-    createdAt: new Date(2024, 2, 6, 20, 45),
-    paymentMethod: "card",
-    note: "Hamburguesas término medio",
-  },
-]
-
-export function OrderList({
-  searchQuery,
-  filters,
-}: {
+type OrderListProps = {
   searchQuery: string
   filters: {
     status: string
@@ -216,85 +16,249 @@ export function OrderList({
     minAmount: string
     maxAmount: string
   }
-}) {
+}
+
+export function OrderList({ searchQuery, filters }: OrderListProps) {
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
-  const [sortField, setSortField] = useState("createdAt")
-  const [sortDirection, setSortDirection] = useState("desc")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
+  const [refreshKey, setRefreshKey] = useState(0) // Estado para forzar recargas manuales
+  const { refreshTrigger } = useStore() // Obtener el trigger de refresco del store global
 
-  // Filtrar por búsqueda
-  let filteredOrders = SAMPLE_ORDERS.filter((order) =>
-    order.customerName.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  // Estados para filtros
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
+  const [showFilters, setShowFilters] = useState(false)
+  const [activeFilters, setActiveFilters] = useState(filters)
 
-  // Filtrar por estado
-  if (filters.status !== "all") {
-    filteredOrders = filteredOrders.filter((order) => order.status === filters.status)
+  // Función para cargar pedidos
+  const loadOrders = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await fetchPedidos()
+      console.log("Datos obtenidos de fetchPedidos:", data)
+
+      // Verificar si data es un array
+      if (Array.isArray(data)) {
+        setOrders(data)
+      } else {
+        console.error("Los datos recibidos no son un array:", data)
+        setOrders([])
+      }
+
+      setError(null)
+    } catch (err) {
+      console.error("Error al cargar los pedidos:", err)
+      setError("Error al cargar los pedidos. Por favor, intente de nuevo.")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Cargar pedidos desde la API cuando cambie refreshKey o refreshTrigger
+  useEffect(() => {
+    loadOrders()
+  }, [loadOrders, refreshKey, refreshTrigger])
+
+  // Añadir este efecto para sincronizar los filtros cuando cambien las props
+  useEffect(() => {
+    setActiveFilters(filters)
+  }, [filters])
+
+  // Añadir este efecto para sincronizar la búsqueda cuando cambie la prop
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery)
+  }, [searchQuery])
+
+  // Función para refrescar manualmente
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1)
   }
 
-  // Filtrar por método de pago
-  if (filters.paymentMethod !== "all") {
-    filteredOrders = filteredOrders.filter((order) => order.paymentMethod === filters.paymentMethod)
-  }
+  // Aplicar filtros
+  const getFilteredOrders = () => {
+    let result = [...orders]
 
-  // Filtrar por monto
-  if (filters.minAmount) {
-    filteredOrders = filteredOrders.filter((order) => order.total >= Number(filters.minAmount))
-  }
-  if (filters.maxAmount) {
-    filteredOrders = filteredOrders.filter((order) => order.total <= Number(filters.maxAmount))
-  }
+    // Filtrar por búsqueda
+    if (localSearchQuery) {
+      result = result.filter(
+        (order) => order.nombre && order.nombre.toLowerCase().includes(localSearchQuery.toLowerCase()),
+      )
+    }
 
-  // Filtrar por fecha
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+    // Filtrar por estado
+    if (activeFilters.status !== "all") {
+      // Mapear los valores del filtro a los valores reales en los datos
+      const statusMapping: Record<string, string> = {
+        pending: "pendiente",
+        completed: "completado",
+        in_progress: "por deber",
+      }
 
-  if (filters.dateRange === "today") {
-    filteredOrders = filteredOrders.filter((order) => {
-      const orderDate = new Date(order.createdAt)
-      orderDate.setHours(0, 0, 0, 0)
-      return orderDate.getTime() === today.getTime()
+      const statusToFilter = statusMapping[activeFilters.status] || activeFilters.status
+      result = result.filter((order) => order.estado === statusToFilter)
+    }
+
+    // Filtrar por método de pago
+    if (activeFilters.paymentMethod !== "all") {
+      result = result.filter((order) => order.metodoPago === activeFilters.paymentMethod)
+    }
+
+    // Filtrar por monto
+    if (activeFilters.minAmount) {
+      result = result.filter((order) => order.total && order.total >= Number(activeFilters.minAmount))
+    }
+
+    if (activeFilters.maxAmount) {
+      result = result.filter((order) => order.total && order.total <= Number(activeFilters.maxAmount))
+    }
+
+    // Filtrar por fecha
+    if (activeFilters.dateRange !== "all") {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      if (activeFilters.dateRange === "today") {
+        result = result.filter((order) => {
+          if (!order.fecha) return false
+          const orderDate = new Date(order.fecha)
+          orderDate.setHours(0, 0, 0, 0)
+          return orderDate.getTime() === today.getTime()
+        })
+      } else if (activeFilters.dateRange === "week") {
+        const weekAgo = new Date(today)
+        weekAgo.setDate(weekAgo.getDate() - 7)
+
+        result = result.filter((order) => order.fecha && new Date(order.fecha) >= weekAgo)
+      } else if (activeFilters.dateRange === "month") {
+        const monthAgo = new Date(today)
+        monthAgo.setMonth(monthAgo.getMonth() - 1)
+
+        result = result.filter((order) => order.fecha && new Date(order.fecha) >= monthAgo)
+      }
+    }
+
+    // Ordenar por fecha (más reciente primero)
+    result.sort((a, b) => {
+      if (!a.fecha && !b.fecha) return 0
+      if (!a.fecha) return 1
+      if (!b.fecha) return -1
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime()
     })
-  } else if (filters.dateRange === "week") {
-    const weekAgo = new Date(today)
-    weekAgo.setDate(weekAgo.getDate() - 7)
 
-    filteredOrders = filteredOrders.filter((order) => order.createdAt >= weekAgo)
-  } else if (filters.dateRange === "month") {
-    const monthAgo = new Date(today)
-    monthAgo.setMonth(monthAgo.getMonth() - 1)
-
-    filteredOrders = filteredOrders.filter((order) => order.createdAt >= monthAgo)
+    return result
   }
 
-  // Ordenar
-  filteredOrders.sort((a, b) => {
-    if (sortField === "createdAt") {
-      return sortDirection === "desc"
-        ? b.createdAt.getTime() - a.createdAt.getTime()
-        : a.createdAt.getTime() - b.createdAt.getTime()
-    } else if (sortField === "total") {
-      return sortDirection === "desc" ? b.total - a.total : a.total - b.total
-    }
-    return 0
-  })
-
-  const handleSort = (field: string) => {
-    if (field === sortField) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortField(field)
-      setSortDirection("desc")
-    }
-  }
+  const filteredOrders = getFilteredOrders()
 
   // Paginación
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
   const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
+  // Resetear filtros
+  const resetFilters = () => {
+    setActiveFilters({
+      status: "all",
+      dateRange: "all",
+      paymentMethod: "all",
+      minAmount: "",
+      maxAmount: "",
+    })
+    setLocalSearchQuery("")
+  }
+
+  // Actualizar página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeFilters, localSearchQuery])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="h-8 w-8 animate-spin rounded-full border-t-2 border-b-2 border-primary"></div>
+        <span className="ml-2 text-lg text-muted-foreground">Cargando pedidos...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
+        <p className="text-destructive">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Reintentar
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <>
+    <div className="space-y-4">
+      {/* Barra de búsqueda y filtros */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre de cliente..."
+            value={localSearchQuery}
+            onChange={(e) => setLocalSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-border/10 bg-secondary/30 pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+          />
+          {localSearchQuery && (
+            <button
+              onClick={() => setLocalSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-1 rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualizar
+          </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1 rounded-lg border border-border/10 px-3 py-2 text-sm font-medium ${
+              Object.values(activeFilters).some((val) => val !== "all" && val !== "")
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            Filtros
+            {Object.values(activeFilters).some((val) => val !== "all" && val !== "") && (
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-xs text-primary">
+                {Object.values(activeFilters).filter((val) => val !== "all" && val !== "").length}
+              </span>
+            )}
+          </button>
+          {Object.values(activeFilters).some((val) => val !== "all" && val !== "") && (
+            <button
+              onClick={resetFilters}
+              className="flex items-center gap-1 rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+              Limpiar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Panel de filtros */}
+      {showFilters && <OrderFilters activeFilters={activeFilters} setActiveFilters={setActiveFilters} />}
+
+      {/* Tabla de pedidos */}
       <div className="rounded-lg border border-border/10 bg-card">
         <div className="overflow-x-auto max-h-[600px]">
           <table className="w-full">
@@ -302,88 +266,68 @@ export function OrderList({
               <tr className="border-b border-border/10">
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Cliente</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Productos</th>
-                <th
-                  className="px-4 py-3 text-right text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort("total")}
-                >
-                  <div className="flex items-center justify-end">
-                    Total
-                    {sortField === "total" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
-                  </div>
-                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Total</th>
                 <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Estado</th>
-                <th className="px-4 py-3 text-center text-sm font-medium text-muted-foreground">Pago</th>
-                <th
-                  className="px-4 py-3 text-right text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground"
-                  onClick={() => handleSort("createdAt")}
-                >
-                  <div className="flex items-center justify-end">
-                    Hora
-                    {sortField === "createdAt" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
-                  </div>
-                </th>
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Fecha/Hora</th>
                 <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedOrders.map((order) => (
-                <tr key={order.id} className="border-b border-border/10 last:border-0">
-                  <td className="px-4 py-3 text-sm font-medium">
-                    {order.customerName}
-                    {order.note && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-secondary/30 px-2 py-0.5 text-xs text-muted-foreground">
-                        <FileText className="mr-1 h-3 w-3" />
-                        Nota
+              {paginatedOrders.length > 0 ? (
+                paginatedOrders.map((order) => (
+                  <tr key={order.id} className="border-b border-border/10 last:border-0">
+                    <td className="px-4 py-3 text-sm font-medium">{order.nombre || "Sin nombre"}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {Array.isArray(order.productos) ? order.productos.length : 0} productos
+                      <span className="block text-xs text-muted-foreground">
+                        {Array.isArray(order.productos) && order.productos.length > 0
+                          ? order.productos
+                              .map((item: any) => `${item.cantidad}x ${item.producto}`)
+                              .join(", ")
+                              .substring(0, 30) +
+                            (order.productos.map((item: any) => `${item.cantidad}x ${item.producto}`).join(", ")
+                              .length > 30
+                              ? "..."
+                              : "")
+                          : "Sin productos"}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    {order.items.length} productos
-                    <span className="block text-xs text-muted-foreground">
-                      {order.items
-                        .map((item) => `${item.quantity}x ${item.name}`)
-                        .join(", ")
-                        .substring(0, 30)}
-                      {order.items.map((item) => `${item.quantity}x ${item.name}`).join(", ").length > 30 ? "..." : ""}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium">${order.total.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <OrderStatus status={order.status} />
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {order.paymentMethod === "cash" ? (
-                      <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-500">
-                        <DollarSign className="mr-1 h-3 w-3" />
-                        Efectivo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-500">
-                        <CreditCard className="mr-1 h-3 w-3" />
-                        Tarjeta
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm">
-                    <div className="flex items-center justify-end gap-1 text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{order.createdAt.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setSelectedOrder(order)}
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-secondary/30 hover:text-foreground"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {filteredOrders.length === 0 && (
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-medium">${(order.total || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <OrderStatus status={order.estado || "pendiente"} />
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm">
+                      <div className="flex items-center justify-end gap-1 text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>
+                          {order.fecha
+                            ? new Date(order.fecha).toLocaleString("es-CO", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "Fecha no disponible"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-secondary/30 hover:text-foreground"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                    No se encontraron pedidos con los filtros seleccionados
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    {orders.length === 0
+                      ? "No hay pedidos disponibles"
+                      : "No se encontraron pedidos con los filtros seleccionados"}
                   </td>
                 </tr>
               )}
@@ -423,19 +367,23 @@ export function OrderList({
       </div>
 
       {selectedOrder && <OrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
-    </>
+    </div>
   )
 }
 
 export function OrderStatus({ status }: { status: string }) {
-  const statusMap = {
+  const statusMap: Record<string, { label: string; color: string }> = {
     pendiente: { label: "Pendiente", color: "bg-yellow-500/20 text-yellow-500" },
-    in_progress: { label: "En Preparación", color: "bg-blue-500/20 text-blue-500" },
     completado: { label: "Completado", color: "bg-green-500/20 text-green-500" },
+    "por deber": { label: "Por Deber", color: "bg-red-500/20 text-red-500" },
   }
 
-  const { label, color } = statusMap[status as keyof typeof statusMap]
+  const statusInfo = statusMap[status] || { label: status, color: "bg-gray-500/20 text-gray-500" }
 
-  return <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${color}`}>{label}</span>
+  return (
+    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${statusInfo.color}`}>
+      {statusInfo.label}
+    </span>
+  )
 }
 

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { Calendar, CreditCard, DollarSign } from "lucide-react"
+import { useState, useEffect } from "react"
 
 type OrderFiltersProps = {
   activeFilters: {
@@ -16,6 +17,11 @@ type OrderFiltersProps = {
 }
 
 export function OrderFilters({ activeFilters, setActiveFilters }: OrderFiltersProps) {
+
+  useEffect(() => {
+    console.log("OrderFilters montado");
+  }, []);
+
   return (
     <div className="rounded-lg border border-border/10 bg-card p-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
