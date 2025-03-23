@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, ChevronDown, ChevronUp, Filter, Plus, Search, TrendingUp } from "lucide-react"
+import { Bell, ChevronDown, ChevronUp, Filter, Plus, Search, TrendingUp, ShoppingBag } from 'lucide-react'
 import { OrderList } from "../../components/orders/order-list"
 import { OrderForm } from "../../components/orders/order-form"
 import { OrderFilters } from "../../components/orders/order-filters"
@@ -11,6 +11,7 @@ import { ActiveOrders } from "../../components/orders/active-orders"
 
 export default function OrdersPage() {
   const [isCreatingOrder, setIsCreatingOrder] = useState(false)
+  const [orderType, setOrderType] = useState<"mesa" | "llevar" | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [showStats, setShowStats] = useState(false)
@@ -18,7 +19,7 @@ export default function OrdersPage() {
   const [showActiveOrders, setShowActiveOrders] = useState(true)
   const [activeFilters, setActiveFilters] = useState({
     status: "all",
-    dateRange: "today",
+    dateRange: "all",
     paymentMethod: "all",
     minAmount: "",
     maxAmount: "",
@@ -30,6 +31,11 @@ export default function OrdersPage() {
 //     { id: 2, message: "Pedido #12 listo para entregar", time: "Hace 10 minutos", read: false },
 //     { id: 3, message: "Stock bajo de Cerveza Corona", time: "Hace 30 minutos", read: true },
 //   ]
+
+  const handleCreateOrder = (type: "mesa" | "llevar") => {
+    setOrderType(type)
+    setIsCreatingOrder(true)
+  }
 
   return (
     <div className="space-y-6 animate-in">
@@ -63,40 +69,24 @@ export default function OrdersPage() {
           </button>
 
           <button
-            onClick={() => setIsCreatingOrder(true)}
+            onClick={() => handleCreateOrder("mesa")}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
-            Nuevo Pedido
+            Nuevo Pedido Mesa
+          </button>
+          
+          <button
+            onClick={() => handleCreateOrder("llevar")}
+            className="flex items-center gap-2 rounded-lg border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            <ShoppingBag className="h-4 w-4" />
+            Pedido Para Llevar
           </button>
         </div>
       </div>
 
       {showStats && <OrderStats />}
-
-      {/* {showNotifications && <OrderNotifications notifications={notifications} />} */}
-
-      <div className="flex flex-col gap-4 md:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar pedidos por cliente..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border/10 bg-secondary/30 px-10 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 rounded-lg border border-border/10 px-4 py-2 text-sm font-medium transition-colors ${
-            showFilters ? "bg-accent text-primary" : "bg-secondary/30 text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Filter className="h-4 w-4" />
-          Filtros
-        </button>
-      </div>
 
       {showFilters && <OrderFilters activeFilters={activeFilters} setActiveFilters={setActiveFilters} />}
 
@@ -125,8 +115,10 @@ export default function OrdersPage() {
         )}
       </div>
 
-      {isCreatingOrder && <OrderForm onClose={() => setIsCreatingOrder(false)} />}
+      {isCreatingOrder && <OrderForm onClose={() => {
+        setIsCreatingOrder(false)
+        setOrderType(null)
+      }} orderType={orderType} />}
     </div>
   )
 }
-
