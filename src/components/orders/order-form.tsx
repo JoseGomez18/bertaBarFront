@@ -7,24 +7,6 @@ import { fetchProducts, fetchCategories, registrarVenta } from "../../api/api"
 import type { Product, Category, OrderItem } from "../../types/inventario"
 import { useStore } from "../../lib/store"
 
-// Mantenemos los pedidos frecuentes por ahora, pero podrías considerar moverlos a la base de datos en el futuro
-// const FREQUENT_ORDERS = [
-//   {
-//     name: "Happy Hour",
-//     items: [
-//       { productId: 59, name: "TRES CORDILLERAS ROSADA", quantity: 4, price: 7500 },
-//       { productId: 58, name: "cheetos", quantity: 2, price: 20 },
-//     ],
-//   },
-//   {
-//     name: "Combo Salud",
-//     items: [
-//       { productId: 46, name: "acetaminofen", quantity: 1, price: 20 },
-//       { productId: 58, name: "cheetos", quantity: 1, price: 20 },
-//     ],
-//   },
-// ]
-
 type OrderFormProps = {
   onClose: () => void
   orderType?: "mesa" | "llevar" | null
@@ -54,6 +36,12 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
 
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [serviceChargeTotal, setServiceChargeTotal] = useState(0);
+  const [initialServiceCharge, setInitialServiceCharge] = useState(0); // 🔥 Estado solo para lo que viene de la API
+
+  const [total, setTotal] = useState(0);
+
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,15 +72,19 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
           const data = await response.json();
 
           console.log("Pedido cargado:", data); // 🔍 Verifica que los datos están correctos
-          console.log("pp", data[0].productos)
 
           setCustomerName((prev) => (prev === "" ? data[0].nombre || "" : prev));
           setItems((prev) => {
             console.log("Antes de actualizar items:", prev);
             console.log("Nuevos productos:", data[0].productos);
             return data[0].productos ?? [];
-          }); setOrderStatus((prev) => (prev === "pending" ? data[0].estado || "pending" : prev));
+          });
+          setOrderStatus((prev) => (prev === "pending" ? data[0].estado || "pending" : prev));
           setNote((prev) => (prev === "" ? data[0].note || "" : prev));
+          setServiceChargeTotal(data[0]?.servicio ?? 0);
+          setInitialServiceCharge(data[0]?.servicio ?? 0);
+
+
 
         } catch (error) {
           console.error("Error cargando la orden:", error);
@@ -101,6 +93,25 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
       fetchOrder();
     }
   }, [editOrderId]);
+
+  // useEffect(() => {
+  //   setServiceChargeTotal(items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0));
+  //   setTotal(calculateTotal());
+  // }, [items]);
+
+  // useEffect(() => {
+  //   const newServiceChargeTotal = items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
+  //   setServiceChargeTotal(newServiceChargeTotal);
+  //   setTotal(calculateTotal(newServiceChargeTotal));
+  // }, [items]);
+
+  useEffect(() => {
+    if (!editOrderId) { // 🔥 Solo recalcular si NO estamos editando un pedido
+      const newServiceChargeTotal = items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
+      setServiceChargeTotal(newServiceChargeTotal);
+    }
+    setTotal(calculateTotal());
+  }, [items]);
 
   useEffect(() => {
     console.log("Estado actualizado de items:", items);
@@ -165,57 +176,102 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setShowServiceChargeDialog(true)
   }
 
+  // const calculateTotal = () => {
+  //   return (items ?? []).reduce((sum, item) => {
+  //     const itemSubtotal = item.precio * item.cantidad;
+  //     const serviceCharge = item.serviceCharge || 0;
+  //     return sum + itemSubtotal + serviceCharge;
+  //   }, 0);
+  // };
+
+  // const calculateTotal = (newServiceChargeTotal = serviceChargeTotal) => {
+  //   return items.reduce((sum, item) => sum + item.precio * item.cantidad, 0) + newServiceChargeTotal;
+  // };
+
   const calculateTotal = () => {
-    return (items ?? []).reduce((sum, item) => {
-      const itemSubtotal = item.precio * item.cantidad;
-      const serviceCharge = item.serviceCharge || 0;
-      return sum + itemSubtotal + serviceCharge;
-    }, 0);
+    const itemsTotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
+    return itemsTotal + (editOrderId ? initialServiceCharge : serviceChargeTotal);
   };
 
   const calculateServiceChargeTotal = () => {
-    return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0)
-  }
+    return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
+  };
 
-  const total = calculateTotal()
-  const serviceChargeTotal = calculateServiceChargeTotal()
+  // const total = calculateTotal()
+  // const serviceChargeTotal = calculateServiceChargeTotal()
 
-  // Modificar la función handleSubmit para actualizar el store después de registrar la venta
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (items.length === 0 || !customerName) {
-      setSubmitError("Debe agregar al menos un producto y proporcionar un nombre para el pedido.")
-      return
+      setSubmitError("Debe agregar al menos un producto y proporcionar un nombre para el pedido.");
+      return;
     }
 
-    setIsSubmitting(true)
-    setSubmitError(null)
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      // Registrar la venta - la función registrarVenta se encarga de transformar los items
-      const result = await registrarVenta(customerName, items, serviceChargeTotal)
+      // const orderData = {
+      //   nombre: customerName,
+      //   productos: items,
+      //   estado: orderStatus,
+      //   note,
+      //   metodoPago: paymentMethod,
+      //   total: calculateTotal(),
+      // };
 
-      console.log("Venta registrada exitosamente:", result)
-      setSubmitSuccess(true)
+      const orderData = {
+        id: editOrderId, // 🔥 Agrega el ID del pedido
+        nombre: customerName,
+        productos: items.map((item) => ({
+          producto_id: item.productId, // 🔥 Cambia `productId` a `producto_id`
+          cantidad: item.cantidad,
+        })),
+        servicio: calculateServiceChargeTotal(), // 🔥 Asegura que el servicio se incluya
+      };
 
-      // Actualizar el store para indicar que se debe refrescar la lista de pedidos
-      useStore.getState().triggerRefresh()
 
-      // También podemos actualizar los pedidos directamente
-      useStore.getState().fetchPedidos()
+      let result;
 
-      // Resetear el formulario después de 2 segundos
+      if (editOrderId) {
+        console.log("Enviando actualización con datos:", orderData);
+
+        result = await fetch('http://localhost:3004/api/actualizarVenta', {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderData),
+        });
+
+        if (!result.ok) {
+          const errorData = await result.json()
+          throw new Error(errorData.error || "Error al registrar la venta")
+        }
+
+      } else {
+        // 🆕 **Crear nueva venta (POST)**
+        result = await registrarVenta(customerName, items, serviceChargeTotal);
+      }
+
+      console.log("Venta procesada exitosamente:", result)
+      setSubmitSuccess(true);
+
+      // Actualizar pedidos en el estado global
+      useStore.getState().fetchPedidos();
+
+      // Cerrar el formulario después de actualizar
       setTimeout(() => {
-        onClose()
-      }, 2000)
+        onClose();
+      }, 2000);
     } catch (error) {
-      console.error("Error al registrar la venta:", error)
-      setSubmitError(error instanceof Error ? error.message : "Error desconocido al registrar la venta")
+      console.error("Error al procesar la venta:", error);
+      setSubmitError(error instanceof Error ? error.message : "Error desconocido al registrar la venta");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
+
 
   const getFormTitle = () => {
     if (editOrderId) {
@@ -497,10 +553,29 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                   </div>
                 )}
 
+                {/* {items.length > 0 && (
+                  <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
+                    <span className="font-medium">Servicio</span>
+                    <span className="text-lg font-bold text-primary">${serviceChargeTotal}</span>
+                  </div>
+                )} */}
+
+                {editOrderId && (
+                  <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
+                    <label className="text-sm font-medium text-muted-foreground">Servicio</label>
+                    <input
+                      type="number"
+                      value={initialServiceCharge}
+                      onChange={(e) => setInitialServiceCharge(Number(e.target.value))}
+                      className="w-24 rounded-lg border border-border/10 bg-secondary/30 px-2 py-1 text-right text-foreground"
+                    />
+                  </div>
+                )}
+
                 {items.length > 0 && (
                   <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
                     <span className="font-medium">Total</span>
-                    <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+                    <span className="text-lg font-bold text-primary">${total}</span>
                   </div>
                 )}
               </div>
@@ -589,12 +664,22 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
               setSelectedProductId(null)
             }}
             onConfirm={(amount) => {
-              setItems(
-                items.map((item) => (item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item)),
-              )
-              setShowServiceChargeDialog(false)
-              setSelectedProductId(null)
+              setItems((prevItems) =>
+                prevItems.map((item) =>
+                  item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item
+                )
+              );
+              setShowServiceChargeDialog(false);
+              setSelectedProductId(null);
             }}
+            // onConfirm={(amount) => {
+            //   setItems(
+            //     items.map((item) => (item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item)),
+            //   )
+            //   setServiceChargeTotal((prev) => prev + amount);
+            //   setShowServiceChargeDialog(false)
+            //   setSelectedProductId(null)
+            // }}
             initialValue={items.find((item) => item.productId === selectedProductId)?.serviceCharge || 0}
           />
         )}
