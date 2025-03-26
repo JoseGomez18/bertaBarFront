@@ -11,7 +11,7 @@ export type Product = {
 export type OrderItem = {
   productId: number;
   cantidad: number;
-  price: number;
+  precio: number;
   producto: string;
   serviceCharge?: number; // Agregado como opcional
   category?: number; //

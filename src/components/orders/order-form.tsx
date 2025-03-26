@@ -8,22 +8,22 @@ import type { Product, Category, OrderItem } from "../../types/inventario"
 import { useStore } from "../../lib/store"
 
 // Mantenemos los pedidos frecuentes por ahora, pero podrías considerar moverlos a la base de datos en el futuro
-const FREQUENT_ORDERS = [
-  {
-    name: "Happy Hour",
-    items: [
-      { productId: 59, name: "TRES CORDILLERAS ROSADA", quantity: 4, price: 7500 },
-      { productId: 58, name: "cheetos", quantity: 2, price: 20 },
-    ],
-  },
-  {
-    name: "Combo Salud",
-    items: [
-      { productId: 46, name: "acetaminofen", quantity: 1, price: 20 },
-      { productId: 58, name: "cheetos", quantity: 1, price: 20 },
-    ],
-  },
-]
+// const FREQUENT_ORDERS = [
+//   {
+//     name: "Happy Hour",
+//     items: [
+//       { productId: 59, name: "TRES CORDILLERAS ROSADA", quantity: 4, price: 7500 },
+//       { productId: 58, name: "cheetos", quantity: 2, price: 20 },
+//     ],
+//   },
+//   {
+//     name: "Combo Salud",
+//     items: [
+//       { productId: 46, name: "acetaminofen", quantity: 1, price: 20 },
+//       { productId: 58, name: "cheetos", quantity: 1, price: 20 },
+//     ],
+//   },
+// ]
 
 type OrderFormProps = {
   onClose: () => void
@@ -76,6 +76,36 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (editOrderId) {
+      const fetchOrder = async () => {
+        try {
+          const response = await fetch(`http://localhost:3004/api/ventasDetalleId/${editOrderId}`);
+          const data = await response.json();
+
+          console.log("Pedido cargado:", data); // 🔍 Verifica que los datos están correctos
+          console.log("pp", data[0].productos)
+
+          setCustomerName((prev) => (prev === "" ? data[0].nombre || "" : prev));
+          setItems((prev) => {
+            console.log("Antes de actualizar items:", prev);
+            console.log("Nuevos productos:", data[0].productos);
+            return data[0].productos ?? [];
+          }); setOrderStatus((prev) => (prev === "pending" ? data[0].estado || "pending" : prev));
+          setNote((prev) => (prev === "" ? data[0].note || "" : prev));
+
+        } catch (error) {
+          console.error("Error cargando la orden:", error);
+        }
+      };
+      fetchOrder();
+    }
+  }, [editOrderId]);
+
+  useEffect(() => {
+    console.log("Estado actualizado de items:", items);
+  }, [items]);
+
   const updateOrderStatus = (status: "pending" | "in_progress" | "completed") => {
     setOrderStatus(status)
   }
@@ -91,7 +121,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
           productId: product.id,
           producto: product.nombre,
           cantidad: 1, // Iniciar con cantidad 1
-          price: product.precio_venta,
+          precio: product.precio_venta,
           category: product.categoria,
           serviceCharge: 0,
         },
@@ -115,20 +145,20 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setItems(items.filter((item) => item.productId !== productId))
   }
 
-  const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
-    // Transformar los items del pedido frecuente al formato esperado por el componente
-    const orderItems: OrderItem[] = frequentOrder.items.map((item) => ({
-      productId: item.productId,
-      producto: item.name,
-      cantidad: item.quantity,
-      price: item.price,
-      category: products.find((p) => p.id === item.productId)?.categoria,
-      serviceCharge: 0,
-    }))
+  // const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
+  //   // Transformar los items del pedido frecuente al formato esperado por el componente
+  //   const orderItems: OrderItem[] = frequentOrder.items.map((item) => ({
+  //     productId: item.productId,
+  //     producto: item.name,
+  //     cantidad: item.quantity,
+  //     price: item.price,
+  //     category: products.find((p) => p.id === item.productId)?.categoria,
+  //     serviceCharge: 0,
+  //   }))
 
-    setItems(orderItems)
-    setShowFrequentOrders(false)
-  }
+  //   setItems(orderItems)
+  //   setShowFrequentOrders(false)
+  // }
 
   const handleServiceCharge = (productId: number) => {
     setSelectedProductId(productId)
@@ -136,12 +166,12 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
   }
 
   const calculateTotal = () => {
-    return items.reduce((sum, item) => {
-      const itemSubtotal = item.price * item.cantidad
-      const serviceCharge = item.serviceCharge || 0
-      return sum + itemSubtotal + serviceCharge
-    }, 0)
-  }
+    return (items ?? []).reduce((sum, item) => {
+      const itemSubtotal = item.precio * item.cantidad;
+      const serviceCharge = item.serviceCharge || 0;
+      return sum + itemSubtotal + serviceCharge;
+    }, 0);
+  };
 
   const calculateServiceChargeTotal = () => {
     return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0)
@@ -266,9 +296,8 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("mesa")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
-                    formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "mesa" ? "bg-primary text-primary-foreground" : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   <Coffee className="h-3 w-3" />
                   Mesa
@@ -276,11 +305,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => setFormType("llevar")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs ${
-                    formType === "llevar"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-xs ${formType === "llevar"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   <ShoppingBag className="h-3 w-3" />
                   Para Llevar
@@ -326,7 +354,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <Star className="h-4 w-4" />
                 Cargar Pedido Frecuente
               </button>
-              {showFrequentOrders && (
+              {/* {showFrequentOrders && (
                 <div className="absolute mt-1 w-64 rounded-lg border border-border/10 bg-card p-2 shadow-lg">
                   {FREQUENT_ORDERS.map((order, index) => (
                     <button
@@ -346,7 +374,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     </button>
                   ))}
                 </div>
-              )}
+              )} */}
             </div>
           </div>
 
@@ -369,11 +397,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     key={category}
                     type="button"
                     onClick={() => setActiveCategory(category)}
-                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-                      activeCategory === category
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                    }`}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${activeCategory === category
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
                   >
                     {category === "all" ? "Todos" : category.charAt(0).toUpperCase() + category.slice(1)}
                   </button>
@@ -415,7 +442,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-sm">{item.producto}</span>
-                        <span className="ml-2 text-xs text-primary">${item.price.toFixed(2)}</span>
+                        <span className="ml-2 text-xs text-primary">${item.precio}</span>
                       </div>
 
                       <div className="flex items-center gap-3">
@@ -450,11 +477,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                       <button
                         type="button"
                         onClick={() => handleServiceCharge(item.productId)}
-                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${
-                          (item.serviceCharge || 0) > 0
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
-                        }`}
+                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs transition-colors ${(item.serviceCharge || 0) > 0
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border/10 bg-secondary/20 text-muted-foreground hover:bg-secondary/30"
+                          }`}
                       >
                         <Plus className="h-3 w-3" />
                         {(item.serviceCharge || 0) > 0
@@ -498,33 +524,30 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("pending")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "pending"
-                      ? "bg-yellow-500/20 text-yellow-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "pending"
+                    ? "bg-yellow-500/20 text-yellow-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   Pendiente
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("in_progress")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "in_progress"
-                      ? "bg-blue-500/20 text-blue-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "in_progress"
+                    ? "bg-blue-500/20 text-blue-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   En Preparación
                 </button>
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("completed")}
-                  className={`rounded-lg px-3 py-1 text-sm ${
-                    orderStatus === "completed"
-                      ? "bg-green-500/20 text-green-500"
-                      : "bg-secondary/30 text-muted-foreground"
-                  }`}
+                  className={`rounded-lg px-3 py-1 text-sm ${orderStatus === "completed"
+                    ? "bg-green-500/20 text-green-500"
+                    : "bg-secondary/30 text-muted-foreground"
+                    }`}
                 >
                   Completado
                 </button>

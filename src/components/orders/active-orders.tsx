@@ -157,8 +157,11 @@ export function ActiveOrders() {
       )}
 
       {selectedOrder && <OrderDetails order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
-      {editingOrderId !== null && <OrderForm onClose={handleCloseOrderForm} editOrderId={editingOrderId} />}
-    </>
+      {editingOrderId !== null && (
+        <div key={editingOrderId}>
+          <OrderForm onClose={handleCloseOrderForm} editOrderId={editingOrderId} />
+        </div>
+      )}    </>
   )
 }
 
