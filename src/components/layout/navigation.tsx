@@ -23,7 +23,7 @@ export function Navigation() {
 
         <NavSection title="Gestión" />
         <NavItem href="/inventory" icon={Package} label="Inventario" active={pathname === "/inventory"} />
-        <NavItem href="/staff" icon={Users} label="Personal" active={pathname === "/staff"} />
+        <NavItem href="/fiados" icon={Users} label="Fiados" active={pathname === "/fiados"} />
 
         <NavSection title="Análisis" />
         <NavItem href="/finanzas" icon={BarChart} label="finanzas" active={pathname === "/finanzas"} />
