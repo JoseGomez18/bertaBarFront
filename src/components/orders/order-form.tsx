@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
-import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag, AlertCircle } from "lucide-react"
-import { fetchProducts, fetchCategories, registrarVenta } from "../../api/api"
+import { useState, useEffect, useCallback } from "react"
+import { FileText, Minus, Plus, Search, Star, X, Coffee, ShoppingBag, AlertCircle } from 'lucide-react'
+import { fetchProducts, fetchCategories, registrarVenta, actualizarVenta } from "../../api/api"
 import type { Product, Category, OrderItem } from "../../types/inventario"
 import { useStore } from "../../lib/store"
 
@@ -36,15 +36,30 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
 
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [serviceChargeTotal, setServiceChargeTotal] = useState(0);
-  const [initialServiceCharge, setInitialServiceCharge] = useState(0); // 🔥 Estado solo para lo que viene de la API
-
-  const [total, setTotal] = useState(0);
-
+  const [servicioGeneral, setServicioGeneral] = useState(0)
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Cálculos de totales
+  const calcularSubtotalProductos = useCallback(() => {
+    return items.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+  }, [items]);
+
+  const calcularTotalServiciosPorProducto = useCallback(() => {
+    return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
+  }, [items]);
+
+  // El total es la suma del subtotal de productos + servicios por producto + servicio general adicional
+  const calcularTotal = useCallback(() => {
+    const subtotal = calcularSubtotalProductos();
+    const serviciosPorProducto = calcularTotalServiciosPorProducto();
+    const servicioGeneralAdicional = servicioGeneral;
+
+    return subtotal + serviciosPorProducto + servicioGeneralAdicional;
+  }, [calcularSubtotalProductos, calcularTotalServiciosPorProducto, servicioGeneral]);
+
+  // Cargar productos y categorías
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true)
@@ -64,6 +79,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     loadData()
   }, [])
 
+  // Cargar datos del pedido si estamos editando
   useEffect(() => {
     if (editOrderId) {
       const fetchOrder = async () => {
@@ -71,21 +87,28 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
           const response = await fetch(`http://localhost:3004/api/ventasDetalleId/${editOrderId}`);
           const data = await response.json();
 
-          console.log("Pedido cargado:", data); // 🔍 Verifica que los datos están correctos
+          console.log("Pedido cargado:", data);
 
-          setCustomerName((prev) => (prev === "" ? data[0].nombre || "" : prev));
-          setItems((prev) => {
-            console.log("Antes de actualizar items:", prev);
-            console.log("Nuevos productos:", data[0].productos);
-            return data[0].productos ?? [];
-          });
-          setOrderStatus((prev) => (prev === "pending" ? data[0].estado || "pending" : prev));
-          setNote((prev) => (prev === "" ? data[0].note || "" : prev));
-          setServiceChargeTotal(data[0]?.servicio ?? 0);
-          setInitialServiceCharge(data[0]?.servicio ?? 0);
+          if (data && data.length > 0) {
+            const order = data[0];
+            setCustomerName(order.nombre || "");
 
+            // Transformar los productos para incluir serviceCharge
+            const orderItems: OrderItem[] = order.productos.map((prod: any) => ({
+              productId: prod.productId,
+              producto: prod.producto,
+              cantidad: prod.cantidad,
+              precio: parseFloat(prod.precio || 0),
+              serviceCharge: parseFloat(prod.servicio_producto || 0)
+            }));
 
+            setItems(orderItems);
+            setOrderStatus(order.estado || "pending");
+            setNote(order.note || "");
 
+            // Asegurarse de que el servicio general sea un valor numérico
+            setServicioGeneral(parseFloat(order.servicio_general || 0));
+          }
         } catch (error) {
           console.error("Error cargando la orden:", error);
         }
@@ -93,29 +116,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
       fetchOrder();
     }
   }, [editOrderId]);
-
-  // useEffect(() => {
-  //   setServiceChargeTotal(items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0));
-  //   setTotal(calculateTotal());
-  // }, [items]);
-
-  // useEffect(() => {
-  //   const newServiceChargeTotal = items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
-  //   setServiceChargeTotal(newServiceChargeTotal);
-  //   setTotal(calculateTotal(newServiceChargeTotal));
-  // }, [items]);
-
-  useEffect(() => {
-    if (!editOrderId) { // 🔥 Solo recalcular si NO estamos editando un pedido
-      const newServiceChargeTotal = items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
-      setServiceChargeTotal(newServiceChargeTotal);
-    }
-    setTotal(calculateTotal());
-  }, [items]);
-
-  useEffect(() => {
-    console.log("Estado actualizado de items:", items);
-  }, [items]);
 
   const updateOrderStatus = (status: "pending" | "in_progress" | "completed") => {
     setOrderStatus(status)
@@ -131,7 +131,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
         {
           productId: product.id,
           producto: product.nombre,
-          cantidad: 1, // Iniciar con cantidad 1
+          cantidad: 1,
           precio: product.precio_venta,
           category: product.categoria,
           serviceCharge: 0,
@@ -156,50 +156,10 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setItems(items.filter((item) => item.productId !== productId))
   }
 
-  // const loadFrequentOrder = (frequentOrder: (typeof FREQUENT_ORDERS)[0]) => {
-  //   // Transformar los items del pedido frecuente al formato esperado por el componente
-  //   const orderItems: OrderItem[] = frequentOrder.items.map((item) => ({
-  //     productId: item.productId,
-  //     producto: item.name,
-  //     cantidad: item.quantity,
-  //     price: item.price,
-  //     category: products.find((p) => p.id === item.productId)?.categoria,
-  //     serviceCharge: 0,
-  //   }))
-
-  //   setItems(orderItems)
-  //   setShowFrequentOrders(false)
-  // }
-
   const handleServiceCharge = (productId: number) => {
     setSelectedProductId(productId)
     setShowServiceChargeDialog(true)
   }
-
-  // const calculateTotal = () => {
-  //   return (items ?? []).reduce((sum, item) => {
-  //     const itemSubtotal = item.precio * item.cantidad;
-  //     const serviceCharge = item.serviceCharge || 0;
-  //     return sum + itemSubtotal + serviceCharge;
-  //   }, 0);
-  // };
-
-  // const calculateTotal = (newServiceChargeTotal = serviceChargeTotal) => {
-  //   return items.reduce((sum, item) => sum + item.precio * item.cantidad, 0) + newServiceChargeTotal;
-  // };
-
-  const calculateTotal = () => {
-    const itemsTotal = items.reduce((sum, item) => sum + item.precio * item.cantidad, 0);
-    return itemsTotal + (editOrderId ? initialServiceCharge : serviceChargeTotal);
-  };
-
-  const calculateServiceChargeTotal = () => {
-    return items.reduce((sum, item) => sum + (item.serviceCharge || 0), 0);
-  };
-
-  // const total = calculateTotal()
-  // const serviceChargeTotal = calculateServiceChargeTotal()
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,52 +173,51 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     setSubmitError(null);
 
     try {
-      // const orderData = {
-      //   nombre: customerName,
-      //   productos: items,
-      //   estado: orderStatus,
-      //   note,
-      //   metodoPago: paymentMethod,
-      //   total: calculateTotal(),
-      // };
-
-      const orderData = {
-        id: editOrderId, // 🔥 Agrega el ID del pedido
-        nombre: customerName,
-        productos: items.map((item) => ({
-          producto_id: item.productId, // 🔥 Cambia `productId` a `producto_id`
-          cantidad: item.cantidad,
-        })),
-        servicio: calculateServiceChargeTotal(), // 🔥 Asegura que el servicio se incluya
-      };
-
-
       let result;
 
-      if (editOrderId) {
-        console.log("Enviando actualización con datos:", orderData);
+      // Preparar los datos para enviar al backend
+      const productos = items.map(item => ({
+        producto_id: item.productId,
+        cantidad: item.cantidad,
+        servicio: item.serviceCharge || 0
+      }));
 
-        result = await fetch('http://localhost:3004/api/actualizarVenta', {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
+      if (editOrderId) {
+        // Actualizar venta existente
+        console.log("Actualizando venta con datos:", {
+          id: editOrderId,
+          nombre: customerName,
+          productos,
+          servicioGeneral: servicioGeneral
         });
 
-        if (!result.ok) {
-          const errorData = await result.json()
-          throw new Error(errorData.error || "Error al registrar la venta")
-        }
-
+        result = await actualizarVenta(
+          editOrderId,
+          customerName,
+          items,
+          servicioGeneral
+        );
       } else {
-        // 🆕 **Crear nueva venta (POST)**
-        result = await registrarVenta(customerName, items, serviceChargeTotal);
+        // Crear nueva venta
+        console.log("Registrando nueva venta con datos:", {
+          nombre: customerName,
+          productos,
+          servicioGeneral: servicioGeneral
+        });
+
+        result = await registrarVenta(
+          customerName,
+          items,
+          servicioGeneral
+        );
       }
 
-      console.log("Venta procesada exitosamente:", result)
+      console.log("Venta procesada exitosamente:", result);
       setSubmitSuccess(true);
 
       // Actualizar pedidos en el estado global
       useStore.getState().fetchPedidos();
+      useStore.getState().triggerRefresh();
 
       // Cerrar el formulario después de actualizar
       setTimeout(() => {
@@ -272,10 +231,9 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
     }
   };
 
-
   const getFormTitle = () => {
     if (editOrderId) {
-      return "Agregar a Pedido Existente"
+      return "Editar Pedido Existente"
     }
     return formType === "llevar" ? "Pedido Para Llevar" : "Nuevo Pedido en Mesa"
   }
@@ -334,12 +292,23 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">¡Venta Registrada!</h2>
-          <p className="text-muted-foreground mb-6">La venta se ha registrado exitosamente.</p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">
+            {editOrderId ? "¡Pedido Actualizado!" : "¡Venta Registrada!"}
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            {editOrderId
+              ? "El pedido se ha actualizado exitosamente."
+              : "La venta se ha registrado exitosamente."}
+          </p>
         </div>
       </div>
     )
   }
+
+  // Calcular los totales para mostrar
+  const subtotalProductos = calcularSubtotalProductos();
+  const totalServiciosPorProducto = calcularTotalServiciosPorProducto();
+  const total = calcularTotal();
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
@@ -396,8 +365,8 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 onChange={(e) => setCustomerName(e.target.value)}
                 className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
                 required
-                disabled={editOrderId !== null}
                 placeholder={formType === "llevar" ? "Nombre del cliente" : "Ej: Mesa 1, Barra 2"}
+                disabled={editOrderId !== null} // Deshabilitar si estamos editando
               />
             </div>
             <div>
@@ -410,27 +379,6 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <Star className="h-4 w-4" />
                 Cargar Pedido Frecuente
               </button>
-              {/* {showFrequentOrders && (
-                <div className="absolute mt-1 w-64 rounded-lg border border-border/10 bg-card p-2 shadow-lg">
-                  {FREQUENT_ORDERS.map((order, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => loadFrequentOrder(order)}
-                      className="flex w-full items-start justify-between rounded-lg p-2 text-left text-sm hover:bg-secondary/30"
-                    >
-                      <div>
-                        <p className="font-medium">{order.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {order.items.length} productos • $
-                          {order.items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <Star className="h-4 w-4 text-primary" />
-                    </button>
-                  ))}
-                </div>
-              )} */}
             </div>
           </div>
 
@@ -498,7 +446,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="text-sm">{item.producto}</span>
-                        <span className="ml-2 text-xs text-primary">${item.precio}</span>
+                        <span className="ml-2 text-xs text-primary">${item.precio.toFixed(2)}</span>
                       </div>
 
                       <div className="flex items-center gap-3">
@@ -540,7 +488,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                       >
                         <Plus className="h-3 w-3" />
                         {(item.serviceCharge || 0) > 0
-                          ? `Servicio: $${item.serviceCharge?.toFixed(2)}`
+                          ? `Servicio: $${(item.serviceCharge || 0).toFixed(2)}`
                           : "Agregar servicio"}
                       </button>
                     </div>
@@ -553,29 +501,37 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                   </div>
                 )}
 
-                {/* {items.length > 0 && (
-                  <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
-                    <span className="font-medium">Servicio</span>
-                    <span className="text-lg font-bold text-primary">${serviceChargeTotal}</span>
-                  </div>
-                )} */}
-
-                {editOrderId && (
-                  <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
-                    <label className="text-sm font-medium text-muted-foreground">Servicio</label>
-                    <input
-                      type="number"
-                      value={initialServiceCharge}
-                      onChange={(e) => setInitialServiceCharge(Number(e.target.value))}
-                      className="w-24 rounded-lg border border-border/10 bg-secondary/30 px-2 py-1 text-right text-foreground"
-                    />
-                  </div>
-                )}
-
                 {items.length > 0 && (
-                  <div className="mt-4 flex items-center justify-between border-t border-border/10 pt-4">
-                    <span className="font-medium">Total</span>
-                    <span className="text-lg font-bold text-primary">${total}</span>
+                  <div className="mt-4 space-y-2 border-t border-border/10 pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Subtotal Productos</span>
+                      <span className="font-medium">${subtotalProductos.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Servicios por Producto</span>
+                      <span className="font-medium">${totalServiciosPorProducto.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Servicio General Adicional</span>
+                        <input
+                          type="number"
+                          value={servicioGeneral}
+                          onChange={(e) => setServicioGeneral(Number(e.target.value))}
+                          className="w-24 rounded-lg border border-border/10 bg-secondary/30 px-2 py-1 text-right text-foreground"
+                          min="0"
+                          step="1000"
+                        />
+                      </div>
+                      <span className="font-medium">${servicioGeneral.toFixed(2)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-border/10 pt-2 mt-2">
+                      <span className="text-base font-bold">Total</span>
+                      <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -664,22 +620,12 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
               setSelectedProductId(null)
             }}
             onConfirm={(amount) => {
-              setItems((prevItems) =>
-                prevItems.map((item) =>
-                  item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item
-                )
-              );
-              setShowServiceChargeDialog(false);
-              setSelectedProductId(null);
+              setItems(
+                items.map((item) => (item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item)),
+              )
+              setShowServiceChargeDialog(false)
+              setSelectedProductId(null)
             }}
-            // onConfirm={(amount) => {
-            //   setItems(
-            //     items.map((item) => (item.productId === selectedProductId ? { ...item, serviceCharge: amount } : item)),
-            //   )
-            //   setServiceChargeTotal((prev) => prev + amount);
-            //   setShowServiceChargeDialog(false)
-            //   setSelectedProductId(null)
-            // }}
             initialValue={items.find((item) => item.productId === selectedProductId)?.serviceCharge || 0}
           />
         )}
@@ -704,7 +650,7 @@ function ServiceChargeDialog({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-background/80 backdrop-blur-sm p-4">
       <div className="w-full max-w-md rounded-lg border border-border/10 bg-card p-4 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">Agregar Cargo de Servicio</h2>
@@ -720,6 +666,8 @@ function ServiceChargeDialog({
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
             className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
+            min="0"
+            step="1000"
           />
         </div>
 
@@ -743,4 +691,3 @@ function ServiceChargeDialog({
     </div>
   )
 }
-

@@ -27,10 +27,10 @@ export const createProduct = async (producto: Omit<Product, "id">): Promise<Prod
 };
 
 export const updateProduct = async (id: number, producto: Partial<Product>): Promise<Product> => {
-  const response = await fetch(`${API_URL}/updateProduct`, { // Aquí corregí la URL
+  const response = await fetch(`${API_URL}/updateProduct`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...producto, id }), // Agregamos el ID en el body, ya que el backend lo espera ahí
+    body: JSON.stringify({ ...producto, id }),
   });
   return response.json();
 };
@@ -38,27 +38,55 @@ export const updateProduct = async (id: number, producto: Partial<Product>): Pro
 export const registrarVenta = async (
   nombre: string,
   items: OrderItem[],
-  servicio: number,
-): Promise<{ ventaId: number; totalVenta: number }> => {
+  servicioGeneral: number = 0
+): Promise<{ ventaId: number; totalVenta: number; totalServicio: number }> => {
   // Transformar los items al formato que espera el backend
   const productos = items.map((item) => ({
     producto_id: item.productId,
     cantidad: item.cantidad,
-  }))
+    servicio: item.serviceCharge || 0 // Incluir el servicio por producto
+  }));
 
   const response = await fetch(`${API_URL}/ventas`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ nombre, productos, servicio }),
-  })
+    body: JSON.stringify({ nombre, productos, servicioGeneral }),
+  });
 
   if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error || "Error al registrar la venta")
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Error al registrar la venta");
   }
 
-  return response.json()
-}
+  return response.json();
+};
+
+export const actualizarVenta = async (
+  id: number,
+  nombre: string,
+  items: OrderItem[],
+  servicioGeneral: number = 0
+): Promise<{ id: number; totalVenta: number; totalServicio: number }> => {
+  // Transformar los items al formato que espera el backend
+  const productos = items.map((item) => ({
+    producto_id: item.productId,
+    cantidad: item.cantidad,
+    servicio: item.serviceCharge || 0 // Incluir el servicio por producto
+  }));
+
+  const response = await fetch(`${API_URL}/actualizarVenta`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, nombre, productos, servicioGeneral }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Error al actualizar la venta");
+  }
+
+  return response.json();
+};
 
 // Función para actualizar estado de una venta
 export const actualizarEstadoVenta = async (
@@ -69,21 +97,18 @@ export const actualizarEstadoVenta = async (
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ estado }),
-  })
+  });
 
   if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error || "Error al actualizar estado")
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Error al actualizar estado");
   }
-}
-
-
+};
 
 export const deleteProduct = async (id: number): Promise<void> => {
-  await fetch(`${API_URL}/deleteProduct/${id}`, { method: "DELETE" }); // Aquí corregí la URL
+  await fetch(`${API_URL}/deleteProduct/${id}`, { method: "DELETE" });
 };
 
 export const deletePedidos = async (id: number): Promise<void> => {
-  await fetch(`${API_URL}/deleteProduct/${id}`, { method: "DELETE" }); // Aquí corregí la URL
+  await fetch(`${API_URL}/deleteProduct/${id}`, { method: "DELETE" });
 };
-
