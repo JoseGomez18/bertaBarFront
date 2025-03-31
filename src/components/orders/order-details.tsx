@@ -1,46 +1,21 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
-import {
-  Check,
-  Clock,
-  CreditCard,
-  DollarSign,
-  Edit,
-  FileText,
-  Printer,
-  Split,
-  Trash,
-  X,
-  Receipt,
-  Plus,
-  Minus,
-  ArrowRightLeft,
-} from "lucide-react"
+import { useState, useEffect } from "react"
+import { Check, Clock, CreditCard, DollarSign, Edit, FileText, Printer, Split, Trash, X, Receipt, Plus, Minus, ArrowRightLeft } from 'lucide-react'
 import { OrderStatus } from "./order-list"
+import { actualizarEstadoVenta } from "../../api/api"
+import { useStore } from "../../lib/store"
 
 type OrderDetailsProps = {
   order: any
   onClose: () => void
 }
 
-// Add this utility function at the top of the file
-// function formatTime(date: Date) {
-//   return date.toLocaleTimeString("es-CO", {
-//     hour: "2-digit",
-//     minute: "2-digit",
-//     hour12: true,
-//   })
-// }
-
 export function OrderDetails({ order, onClose }: OrderDetailsProps) {
   const [status, setStatus] = useState(order.estado)
-  console.log(order)
   const [isEditing, setIsEditing] = useState(false)
   const [discount, setDiscount] = useState(0)
-  const [serviceCharge, setServiceCharge] = useState(0)
   const [note, setNote] = useState(order.note || "")
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "transfer">(order.paymentMethod || "cash")
   const [showSplitBill, setShowSplitBill] = useState(false)
@@ -49,6 +24,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
   const [paymentAmount, setPaymentAmount] = useState(0)
   const [change, setChange] = useState(0)
   const [orderCompleted, setOrderCompleted] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   // Estado para los cargos de servicio por ítem
   const [itemServiceCharges, setItemServiceCharges] = useState<Record<number, number>>({})
@@ -57,9 +33,32 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false)
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false)
 
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus)
-    // Aquí iría la lógica para actualizar el estado del pedido en la base de datos
+  // Inicializar los cargos de servicio por producto desde el pedido
+  useEffect(() => {
+    if (order && order.productos) {
+      const charges: Record<number, number> = {};
+      order.productos.forEach((item: any) => {
+        if (item.productId && item.servicio_producto) {
+          charges[item.productId] = parseFloat(item.servicio_producto);
+        }
+      });
+      setItemServiceCharges(charges);
+    }
+  }, [order]);
+
+  const handleStatusChange = async (newStatus: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      await actualizarEstadoVenta(order.id, newStatus as "pendiente" | "completado" | "por deber");
+      setStatus(newStatus);
+      // Actualizar la lista de pedidos
+      useStore.getState().fetchPedidos();
+      useStore.getState().triggerRefresh();
+    } catch (error) {
+      console.error("Error al actualizar el estado:", error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   }
 
   const handlePrint = () => {
@@ -90,7 +89,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
   }
 
   const handlePayment = () => {
-    if (paymentMethod === "cash" && paymentAmount < total) {
+    if (paymentMethod === "cash" && paymentAmount < order.total) {
       alert("El monto recibido es menor al total")
       return
     }
@@ -99,31 +98,30 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
     console.log("Procesando pago:", {
       orderId: order.id,
       method: paymentMethod,
-      total,
-      paymentAmount: paymentMethod === "cash" ? paymentAmount : total,
+      total: order.total,
+      paymentAmount: paymentMethod === "cash" ? paymentAmount : order.total,
       change: paymentMethod === "cash" ? change : 0,
     })
 
     // Mark order as completed
+    handleStatusChange("completado");
     setOrderCompleted(true)
   }
 
-  const handleServiceChargeChange = (productId: number, value: number) => {
-    setItemServiceCharges({
-      ...itemServiceCharges,
-      [productId]: value,
-    })
-  }
+  // Calcular el total de servicios por producto
+  const totalServiciosPorProducto = order.productos?.reduce(
+    (sum: number, item: any) => sum + parseFloat(item.servicio_producto || 0),
+    0
+  ) || 0;
 
-  const subtotal = order.productos.reduce((sum: number, item: any) => sum + item.price * item.cantidad, 0)
-  const discountAmount = (subtotal * discount) / 100
+  // Calcular el subtotal de productos (sin servicios)
+  const subtotalProductos = parseFloat(order.subtotal_productos || order.subtotal_sin_servicio_general || 0);
 
-  // Calcular el cargo por servicio sumando los cargos individuales por ítem
-  const serviceChargeAmount = Object.values(itemServiceCharges).reduce((sum: number, charge: number) => sum + charge, 0)
+  // Servicio general (como cargo adicional independiente)
+  const servicioGeneral = parseFloat(order.servicio_general || 0);
 
-  const total = subtotal - discountAmount + serviceChargeAmount
-
-  const splitAmount = showSplitBill ? total / splitCount : total
+  // Total (suma de subtotal + servicios por producto + servicio general)
+  const total = subtotalProductos + totalServiciosPorProducto + servicioGeneral;
 
   // If order is completed, show receipt
   if (orderCompleted) {
@@ -148,27 +146,27 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
 
             <div className="w-full rounded-lg border border-border/10 bg-secondary/20 p-4 mt-4">
               <div className="flex justify-between mb-2">
-                <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>Subtotal Productos:</span>
+                <span>${subtotalProductos.toFixed(2)}</span>
               </div>
 
-              {discount > 0 && (
-                <div className="flex justify-between mb-2 text-red-500">
-                  <span>Descuento ({discount}%):</span>
-                  <span>-${discountAmount.toFixed(2)}</span>
+              {totalServiciosPorProducto > 0 && (
+                <div className="flex justify-between mb-2">
+                  <span>Servicios por Producto:</span>
+                  <span>${totalServiciosPorProducto.toFixed(2)}</span>
                 </div>
               )}
 
-              {serviceChargeAmount > 0 && (
+              {servicioGeneral > 0 && (
                 <div className="flex justify-between mb-2">
-                  <span>Servicio:</span>
-                  <span>${serviceChargeAmount.toFixed(2)}</span>
+                  <span>Servicio General Adicional:</span>
+                  <span>${servicioGeneral.toFixed(2)}</span>
                 </div>
               )}
 
               <div className="flex justify-between mb-4 font-bold border-t border-border/10 pt-2">
                 <span>Total:</span>
-                <span>${total}</span>
+                <span className="text-primary">${total.toFixed(2)}</span>
               </div>
 
               <div className="flex justify-between mb-2">
@@ -217,7 +215,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
             </h2>
             <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
               <Clock className="h-3 w-3" />
-              {/* <span>{formatTime(order.createdAt)}</span> */}
+              <span>{order.fecha ? new Date(order.fecha).toLocaleString() : "Fecha no disponible"}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -283,6 +281,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Producto</th>
                       <th className="px-4 py-2 text-center text-xs font-medium text-muted-foreground">Cantidad</th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Precio</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Servicio</th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Subtotal</th>
                     </tr>
                   </thead>
@@ -292,68 +291,47 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                         <td className="px-4 py-2 text-sm">
                           <div className="flex flex-col">
                             <span>{item.producto}</span>
-                            {isEditing && (
-                              <button
-                                type="button"
-                                className="mt-1 text-xs text-primary flex items-center"
-                                onClick={() => {
-                                  // Mostrar un prompt para ingresar el monto del servicio
-                                  const amount = prompt(
-                                    "Ingrese el monto del servicio:",
-                                    itemServiceCharges[item.productId]?.toString() || "0",
-                                  )
-                                  if (amount !== null) {
-                                    handleServiceChargeChange(item.productId, Number.parseFloat(amount) || 0)
-                                  }
-                                }}
-                              >
-                                <Plus className="h-3 w-3 mr-1" />
-                                {itemServiceCharges[item.productId]
-                                  ? `Servicio: $${itemServiceCharges[item.productId]}`
-                                  : "Agregar servicio"}
-                              </button>
-                            )}
-                            {!isEditing && itemServiceCharges[item.productId] > 0 && (
-                              <span className="text-xs text-primary">
-                                Servicio: ${itemServiceCharges[item.productId]}
-                              </span>
-                            )}
                           </div>
                         </td>
                         <td className="px-4 py-2 text-center text-sm">{item.cantidad}</td>
-                        <td className="px-4 py-2 text-right text-sm">${item.precio}</td>
+                        <td className="px-4 py-2 text-right text-sm">${parseFloat(item.precio).toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right text-sm">${parseFloat(item.servicio_producto || 0).toFixed(2)}</td>
                         <td className="px-4 py-2 text-right text-sm font-medium">
-                          ${(item.cantidad * item.precio)}
+                          ${(item.cantidad * parseFloat(item.precio)).toFixed(2)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot className="bg-secondary/20">
                     <tr className="border-t border-border/10">
-                      <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium">
-                        Subtotal
+                      <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium">
+                        Subtotal Productos
                       </td>
-                      <td className="px-4 py-2 text-right text-sm font-medium">${order.subtotal}</td>
-                    </tr>
-                    <tr className="border-t border-border/10">
-                      <td colSpan={3} className="px-4 py-2 text-right text-sm font-medium">
-                        Servicio
+                      <td className="px-4 py-2 text-right text-sm font-medium">
+                        ${subtotalProductos.toFixed(2)}
                       </td>
-                      <td className="px-4 py-2 text-right text-sm font-medium">${order.servicio}</td>
                     </tr>
-                    {serviceChargeAmount > 0 && (
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2 text-right text-sm">
-                          Servicio
+                    {totalServiciosPorProducto > 0 && (
+                      <tr className="border-t border-border/10">
+                        <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium">
+                          Servicios por Producto
                         </td>
-                        <td className="px-4 py-2 text-right text-sm">${serviceChargeAmount.toFixed(2)}</td>
+                        <td className="px-4 py-2 text-right text-sm font-medium">${totalServiciosPorProducto.toFixed(2)}</td>
+                      </tr>
+                    )}
+                    {servicioGeneral > 0 && (
+                      <tr className="border-t border-border/10">
+                        <td colSpan={4} className="px-4 py-2 text-right text-sm font-medium">
+                          Servicio General Adicional
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm font-medium">${servicioGeneral.toFixed(2)}</td>
                       </tr>
                     )}
                     <tr className="border-t border-border/10 font-medium">
-                      <td colSpan={3} className="px-4 py-2 text-right">
+                      <td colSpan={4} className="px-4 py-2 text-right">
                         Total
                       </td>
-                      <td className="px-4 py-2 text-right text-primary">${order.total}</td>
+                      <td className="px-4 py-2 text-right text-primary font-bold">${total.toFixed(2)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -443,7 +421,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                   </div>
                   <div className="flex justify-between text-sm font-medium bg-primary/10 p-3 rounded-lg">
                     <span>Monto por persona:</span>
-                    <span className="text-primary">${splitAmount.toFixed(2)}</span>
+                    <span className="text-primary">${(total / splitCount).toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -452,20 +430,27 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
               <div className="space-y-2">
                 <h3 className="text-sm font-medium text-muted-foreground">Estado del Pedido</h3>
                 <div className="flex gap-2">
-                  <StatusButton status="pending" currentStatus={status} onClick={() => handleStatusChange("pending")}>
+                  <StatusButton
+                    status="pendiente"
+                    currentStatus={status}
+                    onClick={() => handleStatusChange("pendiente")}
+                    disabled={isUpdatingStatus}
+                  >
                     Pendiente
                   </StatusButton>
                   <StatusButton
-                    status="in_progress"
+                    status="por deber"
                     currentStatus={status}
-                    onClick={() => handleStatusChange("in_progress")}
+                    onClick={() => handleStatusChange("por deber")}
+                    disabled={isUpdatingStatus}
                   >
-                    En Preparación
+                    Por Deber
                   </StatusButton>
                   <StatusButton
-                    status="completed"
+                    status="completado"
                     currentStatus={status}
-                    onClick={() => handleStatusChange("completed")}
+                    onClick={() => handleStatusChange("completado")}
+                    disabled={isUpdatingStatus}
                   >
                     Completado
                   </StatusButton>
@@ -477,21 +462,21 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
             <div className="space-y-6">
               <div className="rounded-lg border border-border/10 bg-secondary/20 p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Subtotal:</span>
-                  <span>${subtotal.toFixed(2)}</span>
+                  <span className="text-sm text-muted-foreground">Subtotal Productos:</span>
+                  <span>${subtotalProductos.toFixed(2)}</span>
                 </div>
 
-                {discount > 0 && (
-                  <div className="flex justify-between mb-2 text-red-500">
-                    <span className="text-sm">Descuento ({discount}%):</span>
-                    <span>-${discountAmount.toFixed(2)}</span>
+                {totalServiciosPorProducto > 0 && (
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm">Servicios por Producto:</span>
+                    <span>${totalServiciosPorProducto.toFixed(2)}</span>
                   </div>
                 )}
 
-                {serviceChargeAmount > 0 && (
+                {servicioGeneral > 0 && (
                   <div className="flex justify-between mb-2">
-                    <span className="text-sm">Servicio:</span>
-                    <span>${serviceChargeAmount.toFixed(2)}</span>
+                    <span className="text-sm">Servicio General Adicional:</span>
+                    <span>${servicioGeneral.toFixed(2)}</span>
                   </div>
                 )}
 
@@ -522,7 +507,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                     </div>
                     <div className="flex justify-between text-sm font-medium bg-primary/10 p-2 rounded-lg">
                       <span>Monto por persona:</span>
-                      <span className="text-primary">${splitAmount.toFixed(2)}</span>
+                      <span className="text-primary">${(total / splitCount).toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -598,6 +583,22 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Guardar Cambios
+              </button>
+            </>
+          ) : isProcessingPayment ? (
+            <>
+              <button
+                onClick={() => setIsProcessingPayment(false)}
+                className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePayment}
+                disabled={paymentMethod === "cash" && paymentAmount < total}
+                className="rounded-lg bg-green-500 px-4 py-2 text-sm font-medium text-white hover:bg-green-600 disabled:opacity-50"
+              >
+                Completar Pago
               </button>
             </>
           ) : (
@@ -678,16 +679,18 @@ function StatusButton({
   status,
   currentStatus,
   onClick,
+  disabled = false,
 }: {
   children: React.ReactNode
   status: string
   currentStatus: string
   onClick: () => void
+  disabled?: boolean
 }) {
   const statusColors = {
-    pending: "bg-yellow-500/20 text-yellow-500 border-yellow-500/50",
-    in_progress: "bg-blue-500/20 text-blue-500 border-blue-500/50",
-    completed: "bg-green-500/20 text-green-500 border-green-500/50",
+    pendiente: "bg-yellow-500/20 text-yellow-500 border-yellow-500/50",
+    "por deber": "bg-blue-500/20 text-blue-500 border-blue-500/50",
+    completado: "bg-green-500/20 text-green-500 border-green-500/50",
   }
 
   const isActive = status === currentStatus
@@ -695,8 +698,10 @@ function StatusButton({
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`flex items-center gap-1 rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${statusColors[status as keyof typeof statusColors]
-        } ${isActive ? "ring-2 ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100"}`}
+        } ${isActive ? "ring-2 ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100"} ${disabled ? "cursor-not-allowed opacity-50" : ""
+        }`}
     >
       {isActive && <Check className="h-3 w-3" />}
       {children}
@@ -730,4 +735,3 @@ function PaymentButton({
     </button>
   )
 }
-
