@@ -1,37 +1,37 @@
 "use client"
 
-import { ArrowDown, ArrowUp, DollarSign, ShoppingBag, Users } from "lucide-react"
+import { ArrowDown, ArrowUp, DollarSign, CreditCard, Wallet } from "lucide-react"
 
 export function OrderStats() {
   // Datos de ejemplo - En una aplicación real vendrían de una API o base de datos
   const stats = [
     {
-      title: "Ventas del día",
+      title: "Ventas Totales del Día",
       value: "$3,240.50",
       change: "+12.5%",
       trend: "up",
       icon: DollarSign,
     },
     {
-      title: "Pedidos completados",
-      value: "24",
+      title: "Ventas en Efectivo",
+      value: "$1,850.25",
       change: "+8.3%",
       trend: "up",
-      icon: ShoppingBag,
+      icon: Wallet,
     },
     {
-      title: "Ticket promedio",
-      value: "$135.02",
-      change: "+4.2%",
+      title: "Ventas con Tarjeta",
+      value: "$1,120.75",
+      change: "+15.2%",
+      trend: "up",
+      icon: CreditCard,
+    },
+    {
+      title: "Ventas por Transferencia",
+      value: "$269.50",
+      change: "+22.7%",
       trend: "up",
       icon: DollarSign,
-    },
-    {
-      title: "Clientes nuevos",
-      value: "8",
-      change: "-2.1%",
-      trend: "down",
-      icon: Users,
     },
   ]
 

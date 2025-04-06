@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { X, Plus, ArrowLeft, Save } from "lucide-react"
 import axios from "axios" // Asegúrate de tener axios instalado
 import type { Product } from "../../types/inventario"
 import { useStore } from "../../lib/store"
@@ -32,6 +32,10 @@ export function ProductForm({
   const [showEditConfirm, setShowEditConfirm] = useState(false)
   const [categorias, setCategorias] = useState<{ id: string; nombre: string }[]>([])
   const { addProduct, updateProduct, fetchProducts } = useStore()
+
+  // Nuevos estados para la creación de categorías
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCategory, setNewCategory] = useState("")
 
   // Obtener las categorías desde el backend
   useEffect(() => {
@@ -158,6 +162,38 @@ export function ProductForm({
     }
   }
 
+  // Función para manejar la creación de una nueva categoría
+  const handleAddCategory = async () => {
+    if (newCategory.trim() === "") return
+
+    try {
+      // Enviar la nueva categoría al servidor
+      const response = await axios.post("http://localhost:3004/api/categorias", {
+        nombre: newCategory.trim(),
+      })
+
+      console.log("✅ Categoría creada con éxito:", response.data)
+
+      // Agregar la nueva categoría a la lista local
+      const nuevaCategoria = {
+        id: response.data.id.toString(),
+        nombre: newCategory.trim(),
+      }
+
+      setCategorias([...categorias, nuevaCategoria])
+
+      // Seleccionar la nueva categoría
+      setFormData({ ...formData, categoria: Number(nuevaCategoria.id) })
+
+      // Limpiar y ocultar el formulario de nueva categoría
+      setNewCategory("")
+      setShowNewCategory(false)
+    } catch (error) {
+      console.error("❌ Error al crear la categoría:", error)
+      alert("Error al crear la categoría")
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-lg border border-border/10 bg-card p-6 shadow-lg">
@@ -180,22 +216,72 @@ export function ProductForm({
             />
           </div>
 
-          {/* Select para Categoría */}
+          {/* Select para Categoría con opción para agregar nueva */}
           <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">Categoría</label>
-            <select
-              value={formData.categoria}
-              onChange={(e) => setFormData({ ...formData, categoria: Number(e.target.value) })}
-              className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
-              required
-            >
-              <option value="">Selecciona una categoría</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.id}>
-                  {categoria.nombre}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              {showNewCategory ? "Nueva Categoría" : "Categoría"}
+            </label>
+
+            {!showNewCategory ? (
+              <div className="flex gap-2">
+                <select
+                  value={formData.categoria}
+                  onChange={(e) => setFormData({ ...formData, categoria: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
+                  required
+                >
+                  <option value="">Selecciona una categoría</option>
+                  {categorias.map((categoria) => (
+                    <option key={categoria.id} value={categoria.id}>
+                      {categoria.nombre}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCategory(true)}
+                  className="rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+                  title="Agregar nueva categoría"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value)}
+                    placeholder="Nombre de la categoría"
+                    className="w-full rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-foreground"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNewCategory(false)
+                      setNewCategory("")
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-border/10 bg-secondary/30 px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-colors"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddCategory}
+                    disabled={!newCategory.trim()}
+                    className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <Save className="h-4 w-4" />
+                    Guardar Categoría
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -4,7 +4,7 @@ import type React from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart, ClipboardList, Home, Package, Settings, Users, Wine } from "lucide-react"
+import { BarChart, ClipboardList, Home, Package, Settings, Users, Wine, Wallet } from "lucide-react"
 
 export function Navigation() {
   const pathname = usePathname()
@@ -26,8 +26,7 @@ export function Navigation() {
         <NavItem href="/fiados" icon={Users} label="Fiados" active={pathname === "/fiados"} />
 
         <NavSection title="Análisis" />
-        <NavItem href="/finanzas" icon={BarChart} label="finanzas" active={pathname === "/finanzas"} />
-
+        <NavItem href="/finance" icon={Wallet} label="Finanzas" active={pathname === "/finance"} />
         <NavSection title="Sistema" />
         <NavItem href="/settings" icon={Settings} label="Configuración" active={pathname === "/settings"} />
       </div>
