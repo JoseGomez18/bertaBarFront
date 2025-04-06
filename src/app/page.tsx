@@ -202,13 +202,12 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
                 </div>
                 <span
-                  className={`rounded-full px-2 py-1 text-xs font-medium ${
-                    item.stock === 0
-                      ? "bg-red-500/20 text-red-500"
-                      : item.stock < 5
-                        ? "bg-yellow-500/20 text-yellow-500"
-                        : "bg-green-500/20 text-green-500"
-                  }`}
+                  className={`rounded-full px-2 py-1 text-xs font-medium ${item.stock === 0
+                    ? "bg-red-500/20 text-red-500"
+                    : item.stock < 5
+                      ? "bg-yellow-500/20 text-yellow-500"
+                      : "bg-green-500/20 text-green-500"
+                    }`}
                 >
                   {item.stock} unidades
                 </span>
@@ -295,52 +294,6 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">Hace 45 min</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Pedidos Frecuentes */}
-      <div className="rounded-xl border border-border/10 bg-card p-6">
-        <h2 className="mb-4 text-lg font-semibold">Pedidos Frecuentes</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <button
-            onClick={() => handleCreateOrder("mesa")}
-            className="flex flex-col justify-between rounded-lg border border-border/10 bg-secondary/30 p-4 text-left transition-colors hover:bg-secondary/50"
-          >
-            <div>
-              <h3 className="font-medium">Happy Hour</h3>
-              <p className="text-xs text-muted-foreground">4x Cerveza Corona, 2x Margarita</p>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm font-medium">$37.00</span>
-              <Plus className="h-4 w-4 text-primary" />
-            </div>
-          </button>
-          <button
-            onClick={() => handleCreateOrder("mesa")}
-            className="flex flex-col justify-between rounded-lg border border-border/10 bg-secondary/30 p-4 text-left transition-colors hover:bg-secondary/50"
-          >
-            <div>
-              <h3 className="font-medium">Mesa VIP</h3>
-              <p className="text-xs text-muted-foreground">1x Whisky, 1x Vino Tinto, 1x Tabla Quesos</p>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm font-medium">$45.00</span>
-              <Plus className="h-4 w-4 text-primary" />
-            </div>
-          </button>
-          <button
-            onClick={() => handleCreateOrder("mesa")}
-            className="flex flex-col justify-between rounded-lg border border-border/10 bg-secondary/30 p-4 text-left transition-colors hover:bg-secondary/50"
-          >
-            <div>
-              <h3 className="font-medium">Ronda Amigos</h3>
-              <p className="text-xs text-muted-foreground">6x Cerveza, 1x Nachos, 1x Papas</p>
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm font-medium">$40.00</span>
-              <Plus className="h-4 w-4 text-primary" />
-            </div>
-          </button>
         </div>
       </div>
 

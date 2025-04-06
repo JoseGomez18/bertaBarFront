@@ -25,7 +25,7 @@ export function OrderFilters({ activeFilters, setActiveFilters }: OrderFiltersPr
   return (
     <div className="rounded-lg border border-border/10 bg-card p-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div>
+        {/* <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">Estado del Pedido</h3>
           <div className="flex flex-wrap gap-2">
             <FilterButton
@@ -53,7 +53,7 @@ export function OrderFilters({ activeFilters, setActiveFilters }: OrderFiltersPr
               Completados
             </FilterButton>
           </div>
-        </div>
+        </div> */}
 
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted-foreground">Rango de Fecha</h3>
@@ -107,10 +107,10 @@ export function OrderFilters({ activeFilters, setActiveFilters }: OrderFiltersPr
             </FilterButton>
             <FilterButton
               active={activeFilters.paymentMethod === "card"}
-              onClick={() => setActiveFilters({ ...activeFilters, paymentMethod: "card" })}
+              onClick={() => setActiveFilters({ ...activeFilters, paymentMethod: "transferencia" })}
               icon={<CreditCard className="mr-1 h-3 w-3" />}
             >
-              Tarjeta
+              transferencia
             </FilterButton>
           </div>
         </div>
@@ -157,11 +157,10 @@ function FilterButton({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-      }`}
+      className={`flex items-center rounded-lg px-3 py-1 text-xs font-medium transition-colors ${active
+        ? "bg-primary text-primary-foreground"
+        : "bg-secondary/30 text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+        }`}
     >
       {icon}
       {children}
