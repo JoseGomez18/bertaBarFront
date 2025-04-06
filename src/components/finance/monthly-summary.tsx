@@ -122,7 +122,7 @@ export function MonthlySummary() {
         </div>
 
         {/* Desglose de categorías */}
-        <div>
+        {/* <div>
           <h4 className="text-sm font-medium text-muted-foreground mb-3">Desglose de Gastos</h4>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-border/10 bg-secondary/30 p-3">
@@ -173,7 +173,7 @@ export function MonthlySummary() {
               </div>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   )

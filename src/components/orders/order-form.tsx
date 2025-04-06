@@ -369,7 +369,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 disabled={editOrderId !== null} // Deshabilitar si estamos editando
               />
             </div>
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Pedidos Frecuentes</label>
               <button
                 type="button"
@@ -379,7 +379,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 <Star className="h-4 w-4" />
                 Cargar Pedido Frecuente
               </button>
-            </div>
+            </div> */}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -551,7 +551,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                   rows={2}
                 />
               </div>
-              <div className="flex gap-2 mt-4">
+              {/* <div className="flex gap-2 mt-4">
                 <button
                   type="button"
                   onClick={() => updateOrderStatus("pending")}
@@ -582,7 +582,7 @@ export function OrderForm({ onClose, orderType = null, editOrderId = null }: Ord
                 >
                   Completado
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
 

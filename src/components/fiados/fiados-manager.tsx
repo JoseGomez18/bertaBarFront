@@ -5,6 +5,7 @@ import { FiadoList } from "./fiados-list"
 import { FiadoDetails } from "./fiado-details"
 import { AddFiadoOrder } from "./add-fiado-order"
 import { Plus } from "lucide-react"
+import { OrderForm } from "../orders/order-form"
 
 export function FiadosManager() {
   const [selectedFiado, setSelectedFiado] = useState<any | null>(null)
@@ -53,12 +54,11 @@ export function FiadosManager() {
       </div>
 
       {isAddingOrder && selectedFiado ? (
-        <AddFiadoOrder
-          fiadoId={selectedFiado.id}
-          fiadoName={selectedFiado.nombre}
-          onBack={() => setIsAddingOrder(false)}
-          onAddOrder={handleOrderAdded}
-        />
+        <>
+          <OrderForm
+            onClose={() => setIsAddingOrder(false)}
+          />
+        </>
       ) : selectedFiado ? (
         <FiadoDetails fiado={selectedFiado} onBack={handleBack} onAddOrder={handleAddOrder} />
       ) : (

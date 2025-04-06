@@ -172,7 +172,7 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
               <div className="flex justify-between mb-2">
                 <span>Método de pago:</span>
                 <span>
-                  {paymentMethod === "cash" ? "Efectivo" : paymentMethod === "card" ? "Tarjeta" : "Transferencia"}
+                  {paymentMethod === "cash" ? "Efectivo" : "Transferencia"}
                 </span>
               </div>
 
@@ -371,13 +371,13 @@ export function OrderDetails({ order, onClose }: OrderDetailsProps) {
                     selected={paymentMethod === "cash"}
                     onClick={() => setPaymentMethod("cash")}
                   />
-                  <PaymentButton
+                  {/* <PaymentButton
                     icon={<CreditCard className="h-4 w-4" />}
                     label="Tarjeta"
                     value="card"
                     selected={paymentMethod === "card"}
                     onClick={() => setPaymentMethod("card")}
-                  />
+                  /> */}
                   <PaymentButton
                     icon={<ArrowRightLeft className="h-4 w-4" />}
                     label="Transferencia"
