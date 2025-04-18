@@ -1,6 +1,13 @@
 import { Product, Category, Order, OrderItem } from "../types/inventario"; // Asegúrate de que la ruta sea correcta
+import type { RendimientoMensual } from "../types/finanzas";
 
 export const API_URL = "http://localhost:3004/api"; // Ajusta el puerto si es necesario
+
+export const fetchFinanzasMensuales = async (): Promise<RendimientoMensual[]> => {
+  const response = await fetch(`${API_URL}/api/finanzas`);
+  if (!response.ok) throw new Error("Error al obtener datos financieros");
+  return response.json();
+};
 
 export const fetchProducts = async (): Promise<Product[]> => {
   const response = await fetch(`${API_URL}/productos`);

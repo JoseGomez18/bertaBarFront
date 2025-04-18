@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import type { Product, Order, Category } from "../types/inventario"
+import type { RendimientoMensual } from "../types/finanzas";
 import {
   fetchProducts,
   fetchCategories,
@@ -8,6 +9,7 @@ import {
   deleteProduct,
   deletePedidos,
   fetchPedidos,
+  fetchFinanzasMensuales,
 } from "../api/api"
 
 type Store = {
@@ -16,6 +18,9 @@ type Store = {
   orders: Order[]
   successMessage: string | null
   refreshTrigger: number // Nuevo estado para controlar refrescos
+  finanzas: RendimientoMensual[] // ✅ Te falta esto
+  fetchFinanzas: () => Promise<void> 
+  
 
   setSuccessMessage: (message: string | null) => void
   triggerRefresh: () => void // Nueva función para forzar refrescos
@@ -37,6 +42,15 @@ export const useStore = create<Store>((set) => ({
   categories: [],
   successMessage: null,
   refreshTrigger: 0, // Inicializar el contador de refrescos
+  finanzas: [], // ✅ NUEVO estado
+  fetchFinanzas: async () => { // ✅ NUEVA función
+    try {
+      const data = await fetchFinanzasMensuales();
+      set({ finanzas: data });
+    } catch (error) {
+      console.error("Error al obtener finanzas:", error);
+    }
+  },
 
   setSuccessMessage: (message) => set({ successMessage: message }),
 
@@ -69,6 +83,8 @@ export const useStore = create<Store>((set) => ({
       console.error("Error al obtener categorías:", error)
     }
   },
+
+  
 
   addProduct: async (product) => {
     try {

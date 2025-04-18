@@ -24,6 +24,7 @@ export type RendimientoMensual = {
   mes: string;
   ingresos: number;
   gastos: number;
+  beneficio: number
 };
 
 export type IndicadorFinanciero = {
